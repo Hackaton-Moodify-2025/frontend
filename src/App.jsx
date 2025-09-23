@@ -1,15 +1,21 @@
-import { Box, Text } from "@chakra-ui/react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Box } from "@chakra-ui/react";
 import Navbar from "./components/Navbar.jsx";
+import ApiPage from "./pages/ApiPage.jsx";
+import DashboardPage from "./pages/DashboardPage.jsx";
+import DataLensPage from "./pages/DataLensPage.jsx";
 
 export default function App() {
   return (
-    <Box minH="100vh" bg="gray.50">
-      <Navbar />
-      <Box p={6}>
-        <Text fontSize="lg" color="gray.700">
-          Сервис для отслеживания динамики клиентских настроений и проблем по банковским продуктам.
-        </Text>
+    <Router>
+      <Box minH="100vh" bg="gray.50">
+        <Navbar />
+        <Routes>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/api" element={<ApiPage />} />
+          <Route path="/datalens" element={<DataLensPage />} />
+        </Routes>
       </Box>
-    </Box>
+    </Router>
   );
 }
