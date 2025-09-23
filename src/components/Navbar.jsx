@@ -1,4 +1,5 @@
-import { Box, Flex, Heading, Spacer, Button } from "@chakra-ui/react";
+import { Box, Flex, Heading, Spacer, Button, HStack } from "@chakra-ui/react";
+import { Link } from "react-router-dom";
 
 export default function Navbar() {
   return (
@@ -8,9 +9,17 @@ export default function Navbar() {
           Газпромбанк.Тех
         </Heading>
         <Spacer />
-        <Button colorScheme="whiteAlpha" variant="outline" size="sm">
-          Войти
-        </Button>
+        <HStack spacing={4}>
+          <Button as={Link} to="/" variant="ghost" color="white">
+            Дашборд
+          </Button>
+          <Button as={Link} to="/api" variant="ghost" color="white">
+            API
+          </Button>
+          <Button as={Link} to="/datalens" variant="ghost" color="white">
+            DataLens
+          </Button>
+        </HStack>
       </Flex>
     </Box>
   );
