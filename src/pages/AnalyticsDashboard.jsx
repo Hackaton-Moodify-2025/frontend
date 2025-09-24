@@ -42,14 +42,14 @@ export default function AnalyticsDashboard() {
   ];
 
   return (
-    <Box p={6}>
+    <Box py={6}>
       <Heading mb={6} color="brand.500">
         Аналитический дашборд
       </Heading>
 
       <KpiCards stats={stats} />
 
-      <SimpleGrid columns={[1, 2]} spacing={6} mb={6}>
+      <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6} mb={6}>
         <SentimentPie data={sentimentData} />
         <TopicsBarChart data={topicsData} />
       </SimpleGrid>

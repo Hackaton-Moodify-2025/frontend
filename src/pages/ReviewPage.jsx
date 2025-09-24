@@ -23,10 +23,11 @@ export default function ReviewPage() {
   const host = getHost(merged.link);
 
   return (
-    <Box p={6} bg="white" rounded="lg" boxShadow="md">
-      <Button mb={4} onClick={() => navigate(-1)} colorScheme="brand">
-        ← Назад
-      </Button>
+    <Box py={6}>
+      <Box bg="white" p={6} rounded="lg" boxShadow="md">
+        <Button mb={4} onClick={() => navigate(-1)} colorScheme="brand">
+          ← Назад
+        </Button>
 
       <HStack mb={4}>
         {host && (
@@ -64,9 +65,10 @@ export default function ReviewPage() {
         ))}
       </VStack>
 
-      <Link href={merged.link} isExternal mt={6} display="block" color="brand.500">
-        Открыть оригинал ({host})
-      </Link>
+        <Link href={merged.link} isExternal mt={6} display="block" color="brand.500">
+          Открыть оригинал ({host})
+        </Link>
+      </Box>
     </Box>
   );
 }

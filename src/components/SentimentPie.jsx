@@ -5,7 +5,16 @@ const COLORS = ["#27AE60", "#95A5A6", "#C0392B"];
 
 export default function SentimentPie({ data }) {
   return (
-    <Box bg="white" p={4} rounded="lg" boxShadow="md" w="100%" h="400px">
+    <Box 
+      bg="white" 
+      p={6} 
+      rounded="xl" 
+      boxShadow="md" 
+      w="100%" 
+      h="400px"
+      border="1px"
+      borderColor="gray.100"
+    >
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie

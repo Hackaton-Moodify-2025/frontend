@@ -1,4 +1,4 @@
-import { Box, Flex, Heading, Spacer, HStack, Button } from "@chakra-ui/react";
+import { Box, Flex, Heading, Spacer, HStack, Button, Container } from "@chakra-ui/react";
 import { NavLink } from "react-router-dom";
 
 export default function Navbar() {
@@ -9,11 +9,15 @@ export default function Navbar() {
   ];
 
   return (
-    <Box bg="brand.500" px={8} py={4} boxShadow="md" position="sticky" top={0} zIndex={10}>
-      <Flex align="center">
-        <Heading size="md" color="white" as={NavLink} to="/">
-          Газпромбанк.Тех
-        </Heading>
+    <Box bg="brand.500" py={4} boxShadow="lg" position="sticky" top={0} zIndex={10}>
+      <Container 
+        maxW={{ base: "100%", sm: "95%", md: "90%", lg: "1400px", xl: "1600px" }}
+        px={{ base: 4, md: 6, lg: 8 }}
+      >
+        <Flex align="center">
+          <Heading size="md" color="white" as={NavLink} to="/">
+            Газпромбанк.Тех
+          </Heading>
         <Spacer />
         <HStack spacing={2}>
           {navItems.map((item) => (
@@ -38,7 +42,8 @@ export default function Navbar() {
             </Button>
           ))}
         </HStack>
-      </Flex>
+        </Flex>
+      </Container>
     </Box>
   );
 }

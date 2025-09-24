@@ -20,7 +20,7 @@ export default function ApiPage() {
   }, []);
 
   return (
-    <Box p={6}>
+    <Box py={6}>
       <Text fontSize="lg" color="gray.700" mb={4}>
         Вызов API и визуализация данных. Чисто пример
       </Text>

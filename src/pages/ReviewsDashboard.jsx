@@ -30,41 +30,97 @@ export default function DashboardPage() {
   if (selectedSentiment) filtered = filtered.filter((i) => i.sentiments.includes(selectedSentiment));
 
   return (
-    <Box p={6}>
-      <HStack spacing={4} mb={6}>
-        <Select
-          placeholder="Фильтр по теме"
-          w="250px"
-          value={selectedTopic}
-          onChange={(e) => setSelectedTopic(e.target.value)}
+    <Box py={6}>
+      <Box 
+        bg="white" 
+        p={4} 
+        rounded="xl" 
+        boxShadow="sm" 
+        mb={6}
+        border="1px"
+        borderColor="gray.100"
+      >
+        <Flex 
+          direction={{ base: "column", md: "row" }} 
+          gap={4} 
+          align={{ base: "stretch", md: "center" }}
+          justify="space-between"
         >
-          {mockReviews.topics_used.map((t) => (
-            <option key={t} value={t}>{t}</option>
-          ))}
-        </Select>
+          <HStack spacing={4} flex={1}>
+            <Select
+              placeholder="Фильтр по теме"
+              minW={{ base: "auto", md: "200px" }}
+              w={{ base: "full", md: "auto" }}
+              value={selectedTopic}
+              onChange={(e) => setSelectedTopic(e.target.value)}
+              bg="gray.50"
+              border="1px"
+              borderColor="gray.200"
+              _focus={{ borderColor: "brand.400", boxShadow: "0 0 0 1px var(--chakra-colors-brand-400)" }}
+            >
+              {mockReviews.topics_used.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </Select>
 
-        <Select
-          placeholder="Фильтр по тональности"
-          w="200px"
-          value={selectedSentiment}
-          onChange={(e) => setSelectedSentiment(e.target.value)}
-        >
-          <option value="положительно">Положительно</option>
-          <option value="нейтрально">Нейтрально</option>
-          <option value="отрицательно">Отрицательно</option>
-        </Select>
+            <Select
+              placeholder="Фильтр по тональности"
+              minW={{ base: "auto", md: "220px" }}
+              w={{ base: "full", md: "auto" }}
+              value={selectedSentiment}
+              onChange={(e) => setSelectedSentiment(e.target.value)}
+              bg="gray.50"
+              border="1px"
+              borderColor="gray.200"
+              _focus={{ borderColor: "brand.400", boxShadow: "0 0 0 1px var(--chakra-colors-brand-400)" }}
+            >
+              <option value="положительно">Положительно</option>
+              <option value="нейтрально">Нейтрально</option>
+              <option value="отрицательно">Отрицательно</option>
+            </Select>
+          </HStack>
 
-        <HStack>
-          <IconButton icon={<FaTh />} onClick={() => setViewMode("grid")} aria-label="Grid" />
-          <IconButton icon={<FaList />} onClick={() => setViewMode("list")} aria-label="List" />
-        </HStack>
-      </HStack>
+          <HStack spacing={2}>
+            <IconButton 
+              icon={<FaTh />} 
+              onClick={() => setViewMode("grid")} 
+              aria-label="Grid"
+              colorScheme={viewMode === "grid" ? "brand" : "gray"}
+              variant={viewMode === "grid" ? "solid" : "ghost"}
+            />
+            <IconButton 
+              icon={<FaList />} 
+              onClick={() => setViewMode("list")} 
+              aria-label="List"
+              colorScheme={viewMode === "list" ? "brand" : "gray"}
+              variant={viewMode === "list" ? "solid" : "ghost"}
+            />
+          </HStack>
+        </Flex>
+      </Box>
 
-      <SimpleGrid columns={viewMode === "grid" ? [1, 2] : 1} spacing={6}>
+      <SimpleGrid 
+        columns={viewMode === "grid" ? { base: 1, md: 2, lg: 3, xl: 4 } : 1} 
+        spacing={6}
+      >
         {filtered.map((item) => {
           const host = getHost(item.link);
           return (
-            <Box key={item.id} bg="white" p={4} rounded="lg" boxShadow="sm">
+            <Box 
+              key={item.id} 
+              bg="white" 
+              p={5} 
+              rounded="xl" 
+              boxShadow="md" 
+              border="1px" 
+              borderColor="gray.100"
+              transition="all 0.2s"
+              _hover={{ 
+                boxShadow: "lg", 
+                transform: "translateY(-2px)",
+                borderColor: "brand.200"
+              }}
+            >
               <Flex align="center" mb={2}>
                 {host && (
                   <Image
