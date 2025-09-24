@@ -6,13 +6,12 @@ export default function Navbar() {
     { label: "Отзывы", to: "/" },
     { label: "Аналитика", to: "/analytics" },
     { label: "API", to: "/api" },
-    { label: "DataLens", to: "/datalens" },
   ];
 
   return (
     <Box bg="brand.500" px={8} py={4} boxShadow="md" position="sticky" top={0} zIndex={10}>
       <Flex align="center">
-        <Heading size="md" color="white">
+        <Heading size="md" color="white" as={NavLink} to="/">
           Газпромбанк.Тех
         </Heading>
         <Spacer />
