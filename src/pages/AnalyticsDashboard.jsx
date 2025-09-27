@@ -10,10 +10,18 @@ import {
   Badge,
   useDisclosure,
   Collapse,
-  Divider
+  Divider,
+  Alert,
+  AlertIcon,
+  Text,
+  Spinner,
+  Center
 } from "@chakra-ui/react";
 import { useState, useMemo } from "react";
 import { FiFilter, FiRefreshCw, FiDownload } from "react-icons/fi";
+
+// API Hook
+import { useAnalytics } from "../hooks/useAPI";
 
 // Импорт существующих компонентов
 import KpiCards from "../components/KpiCards.jsx";
@@ -28,6 +36,7 @@ import SentimentAnalysis from "../components/SentimentAnalysis.jsx";
 import TopicsInsights from "../components/TopicsInsights.jsx";
 import GeographicInsights from "../components/GeographicInsights.jsx";
 import ReviewsTable from "../components/ReviewsTable.jsx";
+import { AnalyticsSkeleton } from "../components/LoadingSkeleton";
 import AdvancedTimelines from "../components/AdvancedTimelines.jsx";
 import SmartInsights from "../components/SmartInsights.jsx";
 import ExportTools from "../components/ExportTools.jsx";
@@ -35,13 +44,12 @@ import WordCloudAnalysis from "../components/WordCloudAnalysis.jsx";
 import ActivityHeatMap from "../components/ActivityHeatMap.jsx";
 import LiveAlerts from "../components/LiveAlerts.jsx";
 
-// Импорт данных
-import { mockReviews } from "../mocks/reviews.js";
-import { siteReviews } from "../mocks/siteReviews.js";
-
 export default function AnalyticsDashboard() {
   const { isOpen: isFilterOpen, onToggle: onFilterToggle } = useDisclosure();
   const bgColor = useColorModeValue("gray.50", "gray.900");
+
+  // Fetch analytics data from API
+  const { data: analyticsData, loading, error, refresh } = useAnalytics();
 
   // Состояние фильтров
   const [filters, setFilters] = useState({
@@ -67,7 +75,7 @@ export default function AnalyticsDashboard() {
       'не', 'ни', 'нет', 'никак', 'никто', 'ничто', 'нигде', 'никуда', 'никогда',
       'очень', 'более', 'менее', 'самый', 'тоже', 'также', 'ещё', 'уже', 'только', 'лишь'
     ];
-    
+
     return text
       .toLowerCase()
       .split(/\s+/)
@@ -75,34 +83,50 @@ export default function AnalyticsDashboard() {
       .join(' ');
   };
 
-  // Объединение и обработка данных
+  // Обработка данных из API
   const combinedData = useMemo(() => {
-    // Объединяем данные из predictions и siteReviews
-    const predictions = mockReviews.predictions || [];
-    const reviews = siteReviews || [];
+    if (!analyticsData) {
+      console.log('No analyticsData available');
+      return [];
+    }
 
-    // Создаем мапу для быстрого поиска по ID
-    const reviewsMap = new Map();
-    reviews.forEach(review => {
-      reviewsMap.set(review.id, review);
+    console.log('Analytics data structure:', {
+      keys: Object.keys(analyticsData),
+      reviewsCount: analyticsData.reviews?.length,
+      predictionsCount: analyticsData.predictions?.length,
+      hasReviews: !!analyticsData.reviews,
+      hasPredictions: !!analyticsData.predictions
+    });
+
+    if (!analyticsData.reviews) {
+      console.warn('No reviews in analytics data');
+      return [];
+    }
+
+    const reviews = analyticsData.reviews;
+    const predictions = analyticsData.predictions || [];
+
+    // Создаем мапу предикшенов для быстрого поиска
+    const predictionsMap = new Map();
+    predictions.forEach(prediction => {
+      predictionsMap.set(prediction.id, prediction);
     });
 
     // Объединяем данные
-    const combined = predictions.map(prediction => {
-      const review = reviewsMap.get(prediction.id);
+    const combined = reviews.map(review => {
+      const prediction = predictionsMap.get(review.id);
       return {
-        ...prediction,
         ...review,
-        // Обеспечиваем совместимость данных
-        topics: prediction.topics || [],
-        sentiments: prediction.sentiments || [],
+        // Добавляем данные предикшена если есть
+        topics: review.topics || prediction?.topics || [],
+        sentiments: review.sentiments || prediction?.sentiments || [],
         // Добавляем очищенный от стоп-слов текст для аналитики
-        cleanText: filterStopWords(review?.text || prediction?.text || '')
+        cleanText: filterStopWords(review.text || '')
       };
     }).filter(item => item.id); // Убираем элементы без ID
 
     return combined;
-  }, []);
+  }, [analyticsData]);
 
   // Применение фильтров
   const filteredData = useMemo(() => {
@@ -266,6 +290,82 @@ export default function AnalyticsDashboard() {
     (filters.dateRange[1] < 365 ? 1 : 0) +
     (filters.ratingRange[0] > 1 || filters.ratingRange[1] < 5 ? 1 : 0);
 
+  // Loading state
+  if (loading) {
+    return (
+      <Box py={6} bg={bgColor} minH="100vh">
+        <VStack spacing={6} align="stretch">
+          <HStack justify="space-between" px={6}>
+            <Heading color="brand.500">
+              🚀 Продвинутая аналитика отзывов
+            </Heading>
+            <HStack spacing={3}>
+              <Spinner size="sm" />
+              <Text fontSize="sm" color="gray.600">
+                Загрузка данных...
+              </Text>
+            </HStack>
+          </HStack>
+          <Box px={6}>
+            <AnalyticsSkeleton />
+          </Box>
+        </VStack>
+      </Box>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <Box py={6} bg={bgColor} minH="100vh">
+        <VStack spacing={6} align="stretch">
+          <HStack justify="space-between" px={6}>
+            <Heading color="brand.500">
+              🚀 Продвинутая аналитика отзывов
+            </Heading>
+          </HStack>
+          <Box px={6}>
+            <Alert status="error" rounded="lg">
+              <AlertIcon />
+              <Box>
+                <Text fontWeight="bold">Ошибка загрузки аналитических данных</Text>
+                <Text fontSize="sm">{error}</Text>
+              </Box>
+              <Button ml="auto" onClick={refresh}>
+                Повторить
+              </Button>
+            </Alert>
+          </Box>
+        </VStack>
+      </Box>
+    );
+  }
+
+  // No data state
+  if (!analyticsData || !combinedData.length) {
+    return (
+      <Box py={6} bg={bgColor} minH="100vh">
+        <VStack spacing={6} align="stretch">
+          <HStack justify="space-between" px={6}>
+            <Heading color="brand.500">
+              🚀 Продвинутая аналитика отзывов
+            </Heading>
+          </HStack>
+          <Center py={12}>
+            <VStack spacing={4}>
+              <Text fontSize="lg" color="gray.500">
+                Нет данных для аналитики
+              </Text>
+              <Button onClick={refresh} colorScheme="brand">
+                Обновить данные
+              </Button>
+            </VStack>
+          </Center>
+        </VStack>
+      </Box>
+    );
+  }
+
   return (
     <Box py={6} bg={bgColor} minH="100vh">
       <VStack spacing={6} align="stretch">
@@ -276,6 +376,16 @@ export default function AnalyticsDashboard() {
           </Heading>
           <HStack spacing={3}>
             <ExportTools data={filteredData} filters={filters} />
+            <Button
+              leftIcon={<Icon as={FiRefreshCw} />}
+              onClick={refresh}
+              variant="outline"
+              colorScheme="brand"
+              size="sm"
+              isLoading={loading}
+            >
+              Обновить
+            </Button>
             <Button
               leftIcon={<Icon as={FiFilter} />}
               onClick={onFilterToggle}
@@ -299,8 +409,6 @@ export default function AnalyticsDashboard() {
             >
               Сброс
             </Button>
-            <ExportTools data={filteredData} filters={filters} />
-            <ExportTools data={filteredData} filters={filters} />
           </HStack>
         </HStack>
 

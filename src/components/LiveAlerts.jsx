@@ -171,19 +171,23 @@ export default function LiveAlerts({ data }) {
                     if (reallyNewAlerts.length > 0) {
                         setNewAlertsCount(prev => prev + reallyNewAlerts.length);
 
-                        // Показываем toast для критических алертов
-                        reallyNewAlerts.forEach(alert => {
-                            if (alert.type === "critical") {
-                                toast({
-                                    title: alert.title,
-                                    description: alert.description,
-                                    status: "error",
-                                    duration: 8000,
-                                    isClosable: true,
-                                    position: "top-right"
+                        // Показываем toast для критических алертов в отдельном useEffect
+                        const criticalAlerts = reallyNewAlerts.filter(alert => alert.type === "critical");
+                        if (criticalAlerts.length > 0) {
+                            // Используем setTimeout чтобы вынести toast из фазы рендера
+                            setTimeout(() => {
+                                criticalAlerts.forEach(alert => {
+                                    toast({
+                                        title: alert.title,
+                                        description: alert.description,
+                                        status: "error",
+                                        duration: 8000,
+                                        isClosable: true,
+                                        position: "top-right"
+                                    });
                                 });
-                            }
-                        });
+                            }, 0);
+                        }
                     }
 
                     return [...reallyNewAlerts, ...prev].slice(0, 20); // Ограничиваем 20 алертами

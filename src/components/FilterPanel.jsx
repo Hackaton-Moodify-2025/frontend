@@ -86,7 +86,7 @@ export default function FilterPanel({ filters, onFiltersChange, data = [] }) {
             'не', 'ни', 'нет', 'никак', 'никто', 'ничто', 'нигде', 'никуда', 'никогда',
             'очень', 'более', 'менее', 'самый', 'тоже', 'также', 'ещё', 'уже', 'только', 'лишь'
         ];
-        
+
         return text
             .toLowerCase()
             .split(/\s+/)
@@ -185,7 +185,6 @@ export default function FilterPanel({ filters, onFiltersChange, data = [] }) {
                     <FormLabel fontSize="sm" fontWeight="semibold" mb={3}>
                         Временной период: {filters.dateRange[1] === 3650 ? "Все время" : `Последние ${filters.dateRange[1]} дней`}
                     </FormLabel>
-                    
                     {/* Быстрый выбор периода */}
                     <Wrap spacing={2} mb={4}>
                         {timePeriods.map((period) => (
