@@ -105,29 +105,26 @@ export const useReviews = (initialFilters = {}) => {
     };
 };
 
-// Hook for analytics data
-export const useAnalytics = () => {
+// Hook for analytics data with filters support
+export const useAnalytics = (filters = {}) => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    const fetchAnalytics = useCallback(async () => {
+    const fetchAnalytics = useCallback(async (customFilters = {}) => {
         setLoading(true);
         setError(null);
 
         try {
-            console.log('Fetching analytics data...');
-            const analyticsData = await reviewsAPI.getAnalytics();
+            const requestFilters = { ...filters, ...customFilters };
+            console.log('Fetching analytics data with filters:', requestFilters);
+
+            const analyticsData = await reviewsAPI.getAnalytics(requestFilters);
 
             // Логируем размер данных
             const dataSize = JSON.stringify(analyticsData).length;
             const dataSizeMB = (dataSize / 1024 / 1024).toFixed(2);
             console.log(`Analytics data size: ${dataSizeMB}MB`);
-
-            // Проверяем размер данных
-            if (dataSize > 50 * 1024 * 1024) { // 50MB limit
-                throw new Error(`Данные слишком большие (${dataSizeMB}MB). Попробуйте позже.`);
-            }
 
             console.log('Analytics data loaded successfully:', {
                 reviewsCount: analyticsData.reviews?.length || 0,
@@ -141,7 +138,7 @@ export const useAnalytics = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [filters]);
 
     useEffect(() => {
         fetchAnalytics();

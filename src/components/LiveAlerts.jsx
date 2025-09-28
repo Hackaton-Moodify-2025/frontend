@@ -24,7 +24,7 @@ import {
     ListIcon,
     Divider
 } from "@chakra-ui/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
     FiBell,
     FiAlertTriangle,
@@ -45,59 +45,55 @@ export default function LiveAlerts({ data }) {
 
     const [alerts, setAlerts] = useState([]);
     const [newAlertsCount, setNewAlertsCount] = useState(0);
+    const lastGeneratedRef = useRef(0);
+
+    // Мемоизированные метрики для предотвращения лишних пересчетов
+    const metrics = useMemo(() => {
+        const totalReviews = data.length;
+        const negativeReviews = data.filter(r => r.sentiments?.includes("отрицательно"));
+        const validRatings = data.map(r => parseInt(r.rating)).filter(r => !isNaN(r) && r > 0);
+        const avgRating = validRatings.length > 0 
+            ? validRatings.reduce((a, b) => a + b, 0) / validRatings.length 
+            : 0;
+
+        // Критические темы
+        const criticalTopics = {};
+        negativeReviews.forEach(review => {
+            review.topics?.forEach(topic => {
+                criticalTopics[topic] = (criticalTopics[topic] || 0) + 1;
+            });
+        });
+        const topCriticalTopic = Object.entries(criticalTopics)
+            .sort(([, a], [, b]) => b - a)[0];
+
+        return {
+            totalReviews,
+            negativeCount: negativeReviews.length,
+            avgRating,
+            topCriticalTopic,
+            validRatingsCount: validRatings.length
+        };
+    }, [data]);
 
     // Генерация алертов на основе данных
     useEffect(() => {
+        // Предотвращаем частое обновление (не чаще раза в 5 секунд)
+        const now = Date.now();
+        if (now - lastGeneratedRef.current < 5000) {
+            return;
+        }
+        lastGeneratedRef.current = now;
+
         const generateAlerts = () => {
             const newAlerts = [];
             const now = new Date();
 
-            // Анализ данных для алертов
-            const totalReviews = data.length;
-            const recentReviews = data.filter(r => {
-                if (!r.date) return false;
-                const reviewDate = new Date(r.date);
-                const daysDiff = (now - reviewDate) / (1000 * 60 * 60 * 24);
-                return daysDiff <= 1; // Последние 24 часа
-            });
-
-            const negativeReviews = data.filter(r => r.sentiments?.includes("отрицательно"));
-            const recentNegative = recentReviews.filter(r => r.sentiments?.includes("отрицательно"));
-
-            // Критические темы
-            const criticalTopics = {};
-            negativeReviews.forEach(review => {
-                review.topics?.forEach(topic => {
-                    criticalTopics[topic] = (criticalTopics[topic] || 0) + 1;
-                });
-            });
-
-            const topCriticalTopic = Object.entries(criticalTopics)
-                .sort(([, a], [, b]) => b - a)[0];
-
-            // Средний рейтинг
-            const validRatings = data.map(r => parseInt(r.rating)).filter(r => !isNaN(r) && r > 0);
-            const avgRating = validRatings.length > 0
-                ? validRatings.reduce((a, b) => a + b, 0) / validRatings.length
-                : 0;
-
-            // Алерт: Много негативных отзывов за сегодня
-            if (recentNegative.length > 3) {
-                newAlerts.push({
-                    id: `negative_spike_${now.getTime()}`,
-                    type: "critical",
-                    title: "Всплеск негативных отзывов",
-                    description: `Получено ${recentNegative.length} негативных отзывов за последние 24 часа`,
-                    timestamp: now,
-                    action: "Требуется немедленное внимание команды поддержки",
-                    icon: FiTrendingDown
-                });
-            }
+            const { totalReviews, negativeCount, avgRating, topCriticalTopic, validRatingsCount } = metrics;
 
             // Алерт: Критически низкий рейтинг
-            if (avgRating < 2.5 && validRatings.length >= 10) {
+            if (avgRating < 2.5 && validRatingsCount >= 10) {
                 newAlerts.push({
-                    id: `low_rating_${now.getTime()}`,
+                    id: `low_rating`,
                     type: "critical",
                     title: "Критически низкий рейтинг",
                     description: `Средний рейтинг составляет ${avgRating.toFixed(1)} из 5`,
@@ -107,10 +103,10 @@ export default function LiveAlerts({ data }) {
                 });
             }
 
-            // Алерт: Проблемная тема
-            if (topCriticalTopic && topCriticalTopic[1] >= 5) {
+            // Алерт: Проблемная тема (только если есть достаточно данных)
+            if (topCriticalTopic && topCriticalTopic[1] >= 100) {
                 newAlerts.push({
-                    id: `topic_issue_${now.getTime()}`,
+                    id: `topic_issue_${topCriticalTopic[0]}`,
                     type: "warning",
                     title: `Проблемы с "${topCriticalTopic[0]}"`,
                     description: `${topCriticalTopic[1]} негативных упоминаний по данной теме`,
@@ -120,45 +116,16 @@ export default function LiveAlerts({ data }) {
                 });
             }
 
-            // Алерт: Высокая активность
-            if (recentReviews.length > 10) {
-                newAlerts.push({
-                    id: `high_activity_${now.getTime()}`,
-                    type: "info",
-                    title: "Повышенная активность клиентов",
-                    description: `Получено ${recentReviews.length} отзывов за последние 24 часа`,
-                    timestamp: now,
-                    action: "Мониторинг качества обслуживания",
-                    icon: FiUsers
-                });
-            }
-
             // Алерт: Недостаток данных
             if (totalReviews < 20) {
                 newAlerts.push({
-                    id: `low_data_${now.getTime()}`,
+                    id: `low_data`,
                     type: "info",
                     title: "Недостаточно данных для анализа",
                     description: `Всего ${totalReviews} отзывов в базе`,
                     timestamp: now,
                     action: "Рекомендуется расширить каналы сбора обратной связи",
                     icon: FiClock
-                });
-            }
-
-            // Позитивный алерт
-            const positiveReviews = data.filter(r => r.sentiments?.includes("положительно"));
-            const positivityRate = totalReviews > 0 ? (positiveReviews.length / totalReviews * 100) : 0;
-
-            if (positivityRate > 70) {
-                newAlerts.push({
-                    id: `positive_trend_${now.getTime()}`,
-                    type: "success",
-                    title: "Отличная работа!",
-                    description: `${positivityRate.toFixed(1)}% положительных отзывов`,
-                    timestamp: now,
-                    action: "Продолжать в том же духе и изучить успешные практики",
-                    icon: FiCheckCircle
                 });
             }
 
@@ -196,12 +163,7 @@ export default function LiveAlerts({ data }) {
         };
 
         generateAlerts();
-
-        // Обновляем алерты каждые 30 секунд (в реальной системе это может быть WebSocket)
-        const interval = setInterval(generateAlerts, 30000);
-
-        return () => clearInterval(interval);
-    }, [data, toast]);
+    }, [metrics, toast]);
 
     const handleOpenAlerts = () => {
         setNewAlertsCount(0);

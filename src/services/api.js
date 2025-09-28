@@ -8,7 +8,7 @@ class ReviewsAPI {
     }
 
     // Get paginated reviews with optional filters
-    async getReviews({ page = 1, limit = 20, topic = '', sentiment = '' } = {}) {
+    async getReviews({ page = 1, limit = 20, topic = '', sentiment = '', dateFrom = '', dateTo = '' } = {}) {
         const params = new URLSearchParams({
             page: page.toString(),
             limit: limit.toString(),
@@ -16,6 +16,8 @@ class ReviewsAPI {
 
         if (topic) params.append('topic', topic);
         if (sentiment) params.append('sentiment', sentiment);
+        if (dateFrom) params.append('date_from', dateFrom);
+        if (dateTo) params.append('date_to', dateTo);
 
         const response = await fetch(`${this.baseURL}/reviews?${params}`);
 
@@ -27,8 +29,16 @@ class ReviewsAPI {
     }
 
     // Get all analytics data
-    async getAnalytics() {
-        const response = await fetch(`${this.baseURL}/analytics`);
+    async getAnalytics({ topic = '', sentiment = '', dateFrom = '', dateTo = '' } = {}) {
+        const params = new URLSearchParams();
+
+        if (topic) params.append('topic', topic);
+        if (sentiment) params.append('sentiment', sentiment);
+        if (dateFrom) params.append('date_from', dateFrom);
+        if (dateTo) params.append('date_to', dateTo);
+
+        const url = params.toString() ? `${this.baseURL}/analytics?${params}` : `${this.baseURL}/analytics`;
+        const response = await fetch(url);
 
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);

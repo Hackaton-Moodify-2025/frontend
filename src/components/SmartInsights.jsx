@@ -33,6 +33,7 @@ import {
     FiMapPin,
     FiClock
 } from "react-icons/fi";
+import { extractKeywords, filterStopWords, extractBigrams } from "../utils/textAnalysis";
 
 export default function SmartInsights({ data }) {
     const bgColor = useColorModeValue("white", "gray.800");

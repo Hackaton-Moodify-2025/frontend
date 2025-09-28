@@ -172,7 +172,7 @@ export default function ExportTools({ data, filters }) {
 ${topTopics}
 
 ПРИМЕНЕННЫЕ ФИЛЬТРЫ:
-- Период: ${filters.dateRange[0]}-${filters.dateRange[1]} дней
+- Период: ${filters.dateFrom ? `от ${filters.dateFrom}` : 'без ограничений'} ${filters.dateTo ? `до ${filters.dateTo}` : ''}
 - Рейтинг: ${filters.ratingRange[0]}-${filters.ratingRange[1]} звезд
 - Выбранные темы: ${filters.topics.join(', ') || 'Все'}
 - Настроения: ${filters.sentiments.join(', ') || 'Все'}

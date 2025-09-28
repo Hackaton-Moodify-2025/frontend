@@ -20,6 +20,7 @@ import {
 } from "@chakra-ui/react";
 import { useState } from "react";
 import { FiFilter, FiX } from "react-icons/fi";
+import DateRangeSelector from "./DateRangeSelector";
 
 export default function FilterPanel({ filters, onFiltersChange, data = [] }) {
     const bgColor = useColorModeValue("white", "gray.800");
@@ -120,7 +121,8 @@ export default function FilterPanel({ filters, onFiltersChange, data = [] }) {
 
     const clearAllFilters = () => {
         onFiltersChange({
-            dateRange: [0, 365],
+            dateFrom: '',
+            dateTo: '',
             ratingRange: [1, 5],
             topics: [],
             sentiments: [],
@@ -129,8 +131,17 @@ export default function FilterPanel({ filters, onFiltersChange, data = [] }) {
         });
     };
 
+    // Функция для установки предустановленных периодов дат
     const handleTimePeriodSelect = (days) => {
-        onFiltersChange({ ...filters, dateRange: [0, days] });
+        const today = new Date();
+        const fromDate = new Date(today);
+        fromDate.setDate(today.getDate() - days);
+
+        onFiltersChange({
+            ...filters,
+            dateFrom: fromDate.toISOString().split('T')[0],
+            dateTo: today.toISOString().split('T')[0]
+        });
     };
 
     const getSentimentColor = (sentiment) => {
@@ -180,45 +191,12 @@ export default function FilterPanel({ filters, onFiltersChange, data = [] }) {
 
                 <Divider />
 
-                {/* Диапазон дат */}
-                <Box>
-                    <FormLabel fontSize="sm" fontWeight="semibold" mb={3}>
-                        Временной период: {filters.dateRange[1] === 3650 ? "Все время" : `Последние ${filters.dateRange[1]} дней`}
-                    </FormLabel>
-                    {/* Быстрый выбор периода */}
-                    <Wrap spacing={2} mb={4}>
-                        {timePeriods.map((period) => (
-                            <WrapItem key={period.days}>
-                                <Button
-                                    size="xs"
-                                    variant={filters.dateRange[1] === period.days ? "solid" : "outline"}
-                                    colorScheme="brand"
-                                    onClick={() => handleTimePeriodSelect(period.days)}
-                                >
-                                    {period.label}
-                                </Button>
-                            </WrapItem>
-                        ))}
-                    </Wrap>
-
-                    {/* Ручная настройка диапазона */}
-                    <Text fontSize="xs" color="gray.500" mb={2}>
-                        Точная настройка (дни): {filters.dateRange[0]} - {filters.dateRange[1]}
-                    </Text>
-                    <RangeSlider
-                        value={filters.dateRange}
-                        onChange={(value) => onFiltersChange({ ...filters, dateRange: value })}
-                        min={0}
-                        max={3650}
-                        step={7}
-                    >
-                        <RangeSliderTrack>
-                            <RangeSliderFilledTrack bg="brand.500" />
-                        </RangeSliderTrack>
-                        <RangeSliderThumb index={0} />
-                        <RangeSliderThumb index={1} />
-                    </RangeSlider>
-                </Box>
+                {/* Выбор диапазона дат */}
+                <DateRangeSelector
+                    filters={filters}
+                    onFiltersChange={onFiltersChange}
+                    data={data}
+                />
 
                 {/* Диапазон рейтингов */}
                 <Box>

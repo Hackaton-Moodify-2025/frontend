@@ -14,6 +14,7 @@ import {
     Icon
 } from "@chakra-ui/react";
 import { FiMessageSquare, FiAlertTriangle, FiTrendingUp } from "react-icons/fi";
+import { extractKeywords, filterStopWords } from "../utils/textAnalysis";
 
 export default function TopicsInsights({ data }) {
     const bgColor = useColorModeValue("white", "gray.800");

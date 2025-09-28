@@ -23,6 +23,9 @@ import { FiFilter, FiRefreshCw, FiDownload } from "react-icons/fi";
 // API Hook
 import { useAnalytics } from "../hooks/useAPI";
 
+// Text analysis utility
+import { filterStopWords } from "../utils/textAnalysis";
+
 // Импорт существующих компонентов
 import KpiCards from "../components/KpiCards.jsx";
 import SentimentPie from "../components/SentimentPie.jsx";
@@ -48,12 +51,21 @@ export default function AnalyticsDashboard() {
   const { isOpen: isFilterOpen, onToggle: onFilterToggle } = useDisclosure();
   const bgColor = useColorModeValue("gray.50", "gray.900");
 
-  // Fetch analytics data from API
-  const { data: analyticsData, loading, error, refresh } = useAnalytics();
+  // Функции для получения дат по умолчанию (последние 180 дней)
+  const getDefaultDateFrom = () => {
+    const date = new Date();
+    date.setDate(date.getDate() - 180);
+    return date.toISOString().split('T')[0];
+  };
 
-  // Состояние фильтров
+  const getDefaultDateTo = () => {
+    return new Date().toISOString().split('T')[0];
+  };
+
+  // Состояние фильтров с датами по умолчанию на последние 180 дней
   const [filters, setFilters] = useState({
-    dateRange: [0, 365], // последний год по умолчанию
+    dateFrom: getDefaultDateFrom(),
+    dateTo: getDefaultDateTo(),
     ratingRange: [1, 5],
     topics: [],
     sentiments: [],
@@ -61,27 +73,17 @@ export default function AnalyticsDashboard() {
     searchText: ""
   });
 
-  // Функция для фильтрации стоп-слов
-  const filterStopWords = (text) => {
-    if (!text) return '';
-    const stopWords = [
-      'и', 'в', 'на', 'с', 'по', 'для', 'от', 'к', 'о', 'об', 'за', 'до', 'из', 'у', 'во', 'со',
-      'а', 'но', 'да', 'или', 'если', 'то', 'что', 'как', 'где', 'куда', 'когда', 'почему',
-      'через', 'при', 'под', 'над', 'без', 'между', 'среди', 'около', 'вокруг', 'против',
-      'это', 'тот', 'та', 'те', 'этот', 'эта', 'эти', 'все', 'всё', 'каждый', 'любой',
-      'мне', 'меня', 'мой', 'моя', 'моё', 'мои', 'ты', 'тебя', 'твой', 'твоя', 'твоё', 'твои',
-      'он', 'она', 'оно', 'они', 'его', 'её', 'их', 'ему', 'ей', 'им', 'них', 'нём', 'ней',
-      'быть', 'есть', 'был', 'была', 'было', 'были', 'будет', 'будут', 'буду', 'будешь',
-      'не', 'ни', 'нет', 'никак', 'никто', 'ничто', 'нигде', 'никуда', 'никогда',
-      'очень', 'более', 'менее', 'самый', 'тоже', 'также', 'ещё', 'уже', 'только', 'лишь'
-    ];
+  // Мемоизированные фильтры для API
+  const apiFilters = useMemo(() => ({
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
+    // Можно добавить другие фильтры если нужно
+    // topic: filters.topics.length === 1 ? filters.topics[0] : '',
+    // sentiment: filters.sentiments.length === 1 ? filters.sentiments[0] : ''
+  }), [filters.dateFrom, filters.dateTo]);
 
-    return text
-      .toLowerCase()
-      .split(/\s+/)
-      .filter(word => word.length > 2 && !stopWords.includes(word))
-      .join(' ');
-  };
+  // Fetch analytics data from API with current filters
+  const { data: analyticsData, loading, error, refresh } = useAnalytics(apiFilters);
 
   // Обработка данных из API
   const combinedData = useMemo(() => {
@@ -128,7 +130,7 @@ export default function AnalyticsDashboard() {
     return combined;
   }, [analyticsData]);
 
-  // Применение фильтров
+  // Применение дополнительных фильтров (основная фильтрация по датам происходит на бэкенде)
   const filteredData = useMemo(() => {
     return combinedData.filter(item => {
       // Фильтр по тексту (с учетом стоп-слов)
@@ -196,14 +198,7 @@ export default function AnalyticsDashboard() {
         if (!filters.cities.includes(normalizedItemCity)) return false;
       }
 
-      // Фильтр по дате (упрощенная версия)
-      if (item.date && filters.dateRange[1] < 365) {
-        const itemDate = new Date(item.date);
-        const daysAgo = Math.floor((new Date() - itemDate) / (1000 * 60 * 60 * 24));
-        if (daysAgo < filters.dateRange[0] || daysAgo > filters.dateRange[1]) {
-          return false;
-        }
-      }
+      // Фильтрация по датам теперь выполняется на бэкенде
 
       return true;
     });
@@ -273,7 +268,8 @@ export default function AnalyticsDashboard() {
 
   const clearAllFilters = () => {
     setFilters({
-      dateRange: [0, 365],
+      dateFrom: getDefaultDateFrom(),
+      dateTo: getDefaultDateTo(),
       ratingRange: [1, 5],
       topics: [],
       sentiments: [],
@@ -287,7 +283,7 @@ export default function AnalyticsDashboard() {
     filters.sentiments.length +
     filters.cities.length +
     (filters.searchText ? 1 : 0) +
-    (filters.dateRange[1] < 365 ? 1 : 0) +
+    (filters.dateFrom || filters.dateTo ? 1 : 0) +
     (filters.ratingRange[0] > 1 || filters.ratingRange[1] < 5 ? 1 : 0);
 
   // Loading state
