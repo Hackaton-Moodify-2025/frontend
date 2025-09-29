@@ -48,7 +48,7 @@ import ActivityHeatMap from "../components/ActivityHeatMap.jsx";
 import LiveAlerts from "../components/LiveAlerts.jsx";
 
 export default function AnalyticsDashboard() {
-  const { isOpen: isFilterOpen, onToggle: onFilterToggle } = useDisclosure();
+  const { isOpen: isFilterOpen, onToggle: onFilterToggle, onOpen: onFilterOpen } = useDisclosure();
   const bgColor = useColorModeValue("gray.50", "gray.900");
 
   // Функции для получения дат по умолчанию (последние 180 дней)
@@ -286,6 +286,59 @@ export default function AnalyticsDashboard() {
     (filters.dateFrom || filters.dateTo ? 1 : 0) +
     (filters.ratingRange[0] > 1 || filters.ratingRange[1] < 5 ? 1 : 0);
 
+  const handleQuickFilter = (updates, options = {}) => {
+    if (!updates || Object.keys(updates).length === 0) {
+      return;
+    }
+
+    setFilters((prev) => {
+      const next = { ...prev };
+
+      if (Object.prototype.hasOwnProperty.call(updates, "sentiments")) {
+        const sentiments = updates.sentiments || [];
+        next.sentiments = options.appendSentiments
+          ? Array.from(new Set([...prev.sentiments, ...sentiments]))
+          : sentiments;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(updates, "topics")) {
+        const topics = updates.topics || [];
+        next.topics = options.appendTopics
+          ? Array.from(new Set([...prev.topics, ...topics]))
+          : topics;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(updates, "cities")) {
+        const cities = updates.cities || [];
+        next.cities = options.appendCities
+          ? Array.from(new Set([...prev.cities, ...cities]))
+          : cities;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(updates, "ratingRange")) {
+        next.ratingRange = updates.ratingRange;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(updates, "searchText")) {
+        next.searchText = updates.searchText ?? "";
+      }
+
+      if (Object.prototype.hasOwnProperty.call(updates, "dateFrom")) {
+        next.dateFrom = updates.dateFrom;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(updates, "dateTo")) {
+        next.dateTo = updates.dateTo;
+      }
+
+      return next;
+    });
+
+    if (!isFilterOpen) {
+      onFilterOpen();
+    }
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -423,21 +476,18 @@ export default function AnalyticsDashboard() {
             {/* Умные инсайты - во всю ширину */}
             <SmartInsights data={filteredData} />
 
-            {/* Основная статистика - две колонки */}
-            <SimpleGrid columns={{ base: 1, xl: 2 }} spacing={6}>
-              <SentimentAnalysis data={filteredData} />
-              <TopicsInsights data={filteredData} />
-            </SimpleGrid>
+            {/* Основная статистика - растянутые блоки */}
+            <VStack spacing={6} align="stretch">
+              <SentimentAnalysis data={filteredData} onQuickFilter={handleQuickFilter} />
+              <TopicsInsights data={filteredData} onQuickFilter={handleQuickFilter} />
+            </VStack>
 
             {/* Временные тренды - во всю ширину */}
             <AdvancedTimelines data={filteredData} />
 
-            {/* Классические компоненты в адаптивной сетке */}
-            <SimpleGrid columns={{ base: 1, lg: 2, xl: 3 }} spacing={6}>
-              <SentimentPie data={sentimentData} />
-              <TopicsBarChart data={topicsData} />
-              <GeographicInsights data={filteredData} />
-            </SimpleGrid>
+            {/* Географические инсайты - во всю ширину */}
+
+            <GeographicInsights data={filteredData} onQuickFilter={handleQuickFilter} />
 
             {/* Продвинутые компоненты в двух колонках */}
             <SimpleGrid columns={{ base: 1, xl: 2 }} spacing={6}>

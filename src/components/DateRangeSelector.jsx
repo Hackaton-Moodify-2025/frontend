@@ -8,17 +8,22 @@ import {
     Text,
     useColorModeValue,
     Icon,
-    Tooltip
+    Tooltip,
+    ButtonGroup,
+    Spacer,
+    useToast
 } from "@chakra-ui/react";
-import { useState, useEffect } from "react";
-import { FiCalendar, FiX } from "react-icons/fi";
+import { useEffect, useMemo, useState } from "react";
+import { FiCalendar, FiCheck, FiX } from "react-icons/fi";
 
 export default function DateRangeSelector({ filters, onFiltersChange, data = [] }) {
     const bgColor = useColorModeValue("white", "gray.800");
     const borderColor = useColorModeValue("gray.200", "gray.600");
 
-    const [dateFrom, setDateFrom] = useState(filters.dateFrom || '');
-    const [dateTo, setDateTo] = useState(filters.dateTo || '');
+    const [localDateFrom, setLocalDateFrom] = useState(filters.dateFrom || "");
+    const [localDateTo, setLocalDateTo] = useState(filters.dateTo || "");
+    const [isDirty, setIsDirty] = useState(false);
+    const toast = useToast();
 
     // Получаем минимальную и максимальную даты из данных
     const getDateRange = () => {
@@ -90,51 +95,71 @@ export default function DateRangeSelector({ filters, onFiltersChange, data = [] 
     ];
 
     // Обработчики изменения дат
+    const hasInvalidRange = useMemo(() => {
+        if (!localDateFrom || !localDateTo) return false;
+        return new Date(localDateFrom) > new Date(localDateTo);
+    }, [localDateFrom, localDateTo]);
+
     const handleDateFromChange = (value) => {
-        setDateFrom(value);
-        onFiltersChange({
-            ...filters,
-            dateFrom: value,
-            dateTo: dateTo
-        });
+        setLocalDateFrom(value);
+        setIsDirty(true);
     };
 
     const handleDateToChange = (value) => {
-        setDateTo(value);
+        setLocalDateTo(value);
+        setIsDirty(true);
+    };
+
+    const applyDateRange = () => {
+        if (hasInvalidRange) {
+            toast({
+                title: "Проверьте даты",
+                description: "Дата начала не может быть позже даты окончания",
+                status: "warning",
+                duration: 3000,
+                isClosable: true
+            });
+            return;
+        }
+
         onFiltersChange({
             ...filters,
-            dateFrom: dateFrom,
-            dateTo: value
+            dateFrom: localDateFrom,
+            dateTo: localDateTo
         });
+        setIsDirty(false);
     };
 
     // Применение пресета
     const applyPreset = (preset) => {
         const { from, to } = preset.getValue();
-        setDateFrom(from);
-        setDateTo(to);
+        setLocalDateFrom(from);
+        setLocalDateTo(to);
         onFiltersChange({
             ...filters,
             dateFrom: from,
             dateTo: to
         });
+        setIsDirty(false);
     };
 
     // Очистка фильтра
     const clearDateFilter = () => {
-        setDateFrom('');
-        setDateTo('');
+        setLocalDateFrom('');
+        setLocalDateTo('');
         onFiltersChange({
             ...filters,
             dateFrom: '',
             dateTo: ''
         });
+        setIsDirty(false);
     };
 
     // Синхронизация с внешними изменениями фильтров
     useEffect(() => {
-        setDateFrom(filters.dateFrom || '');
-        setDateTo(filters.dateTo || '');
+        setLocalDateFrom(filters.dateFrom || '');
+        setLocalDateTo(filters.dateTo || '');
+        setIsDirty(false);
     }, [filters.dateFrom, filters.dateTo]);
 
     return (
@@ -151,7 +176,7 @@ export default function DateRangeSelector({ filters, onFiltersChange, data = [] 
                         <Icon as={FiCalendar} color="blue.500" />
                         <Text fontWeight="semibold">Период дат</Text>
                     </HStack>
-                    {(dateFrom || dateTo) && (
+                    {(filters.dateFrom || filters.dateTo) && (
                         <Tooltip label="Очистить фильтр дат">
                             <Button
                                 size="sm"
@@ -170,7 +195,7 @@ export default function DateRangeSelector({ filters, onFiltersChange, data = [] 
                         <FormLabel fontSize="sm" mb={0}>Дата от</FormLabel>
                         <Input
                             type="date"
-                            value={dateFrom}
+                            value={localDateFrom}
                             onChange={(e) => handleDateFromChange(e.target.value)}
                             size="sm"
                         />
@@ -180,12 +205,18 @@ export default function DateRangeSelector({ filters, onFiltersChange, data = [] 
                         <FormLabel fontSize="sm" mb={0}>Дата до</FormLabel>
                         <Input
                             type="date"
-                            value={dateTo}
+                            value={localDateTo}
                             onChange={(e) => handleDateToChange(e.target.value)}
                             size="sm"
                         />
                     </VStack>
                 </HStack>
+
+                {hasInvalidRange && (
+                    <Text fontSize="xs" color="red.400">
+                        Дата начала должна быть не позже даты окончания
+                    </Text>
+                )}
 
                 {minDate && maxDate && (
                     <Text fontSize="xs" color="gray.500">
@@ -193,20 +224,35 @@ export default function DateRangeSelector({ filters, onFiltersChange, data = [] 
                     </Text>
                 )}
 
-                <VStack spacing={2}>
-                    <Text fontSize="sm" fontWeight="medium">Быстрый выбор:</Text>
-                    <HStack spacing={2} wrap="wrap">
-                        {presets.map((preset, index) => (
-                            <Button
-                                key={index}
-                                size="xs"
-                                variant="outline"
-                                colorScheme="blue"
-                                onClick={() => applyPreset(preset)}
-                            >
-                                {preset.label}
-                            </Button>
-                        ))}
+                <VStack spacing={3} align="stretch">
+                    <HStack>
+                        <Text fontSize="sm" fontWeight="medium">Быстрый выбор:</Text>
+                        <Spacer />
+                        <ButtonGroup size="xs" variant="outline" colorScheme="blue">
+                            {presets.map((preset, index) => (
+                                <Button
+                                    key={index}
+                                    onClick={() => applyPreset(preset)}
+                                >
+                                    {preset.label}
+                                </Button>
+                            ))}
+                        </ButtonGroup>
+                    </HStack>
+
+                    <HStack justify="flex-end" spacing={2}>
+                        <Button size="sm" variant="ghost" colorScheme="gray" onClick={clearDateFilter}>
+                            Сбросить
+                        </Button>
+                        <Button
+                            size="sm"
+                            colorScheme="brand"
+                            leftIcon={<FiCheck />}
+                            onClick={applyDateRange}
+                            isDisabled={!isDirty || hasInvalidRange}
+                        >
+                            Применить
+                        </Button>
                     </HStack>
                 </VStack>
             </VStack>

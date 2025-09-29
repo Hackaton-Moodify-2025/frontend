@@ -2,11 +2,6 @@ import {
     Box,
     HStack,
     VStack,
-    Select,
-    RangeSlider,
-    RangeSliderTrack,
-    RangeSliderFilledTrack,
-    RangeSliderThumb,
     Text,
     Badge,
     Wrap,
@@ -16,10 +11,32 @@ import {
     FormLabel,
     Divider,
     useColorModeValue,
-    Icon
+    Icon,
+    ButtonGroup,
+    NumberInput,
+    NumberInputField,
+    NumberInputStepper,
+    NumberIncrementStepper,
+    NumberDecrementStepper,
+    Popover,
+    PopoverTrigger,
+    PopoverContent,
+    PopoverHeader,
+    PopoverBody,
+    PopoverCloseButton,
+    InputGroup,
+    InputLeftElement,
+    CheckboxGroup,
+    Checkbox,
+    Stack,
+    StackDivider,
+    Tag,
+    TagLabel,
+    TagCloseButton,
+    Spacer
 } from "@chakra-ui/react";
-import { useState } from "react";
-import { FiFilter, FiX } from "react-icons/fi";
+import { useEffect, useMemo, useState } from "react";
+import { FiFilter, FiSearch, FiStar, FiX } from "react-icons/fi";
 import DateRangeSelector from "./DateRangeSelector";
 
 export default function FilterPanel({ filters, onFiltersChange, data = [] }) {
@@ -60,18 +77,33 @@ export default function FilterPanel({ filters, onFiltersChange, data = [] }) {
     };
 
     // Динамически получаем уникальные города из данных
-    const cities = [...new Set(
-        data
-            .map(item => normalizeCity(item.city))
-            .filter(city => city && city !== "Не указан")
-            .sort()
-    )];
+    const hasUnspecified = useMemo(() => (
+        data.some(item => !item.city || item.city.toString().trim() === "")
+    ), [data]);
+
+    const cityCountMap = useMemo(() => {
+        return data.reduce((acc, item) => {
+            const city = normalizeCity(item.city);
+            if (!city || city === "Не указан") {
+                return acc;
+            }
+            acc[city] = (acc[city] || 0) + 1;
+            return acc;
+        }, {});
+    }, [data]);
+
+    const cities = useMemo(() => {
+        const list = Object.keys(cityCountMap).sort();
+        if (hasUnspecified) {
+            return [...list, "Не указан"];
+        }
+        return list;
+    }, [cityCountMap, hasUnspecified]);
 
     // Добавляем "Не указан" в конец если есть такие данные
-    const hasUnspecified = data.some(item => !item.city || item.city.toString().trim() === "");
-    if (hasUnspecified) {
-        cities.push("Не указан");
-    }
+    const unspecifiedCount = useMemo(() => (
+        data.filter(item => !item.city || item.city.toString().trim() === "").length
+    ), [data]);
 
     // Функция для фильтрации стоп-слов
     const filterStopWords = (text) => {
@@ -153,6 +185,76 @@ export default function FilterPanel({ filters, onFiltersChange, data = [] }) {
         }
     };
 
+    const [localRating, setLocalRating] = useState(filters.ratingRange || [1, 5]);
+    const [ratingDirty, setRatingDirty] = useState(false);
+    const [citySearch, setCitySearch] = useState("");
+
+    useEffect(() => {
+        setLocalRating(filters.ratingRange || [1, 5]);
+        setRatingDirty(false);
+    }, [filters.ratingRange]);
+
+    const filteredCities = useMemo(() => {
+        if (!citySearch) {
+            return cities;
+        }
+        return cities.filter(city => city.toLowerCase().includes(citySearch.toLowerCase()));
+    }, [cities, citySearch]);
+
+    const ratingPresets = [
+        { label: "Все", range: [1, 5] },
+        { label: "5 ★", range: [5, 5] },
+        { label: "4+ ★", range: [4, 5] },
+        { label: "3-4 ★", range: [3, 4] },
+        { label: "≤ 2 ★", range: [1, 2] }
+    ];
+
+    const isRatingPresetActive = (range) => (
+        filters.ratingRange?.[0] === range[0] && filters.ratingRange?.[1] === range[1]
+    );
+
+    const handleRatingInputChange = (index) => (valueString) => {
+        const value = Math.min(5, Math.max(1, parseInt(valueString, 10) || 1));
+        setLocalRating(prev => {
+            const next = [...prev];
+            next[index] = value;
+            if (next[0] > next[1]) {
+                if (index === 0) {
+                    next[1] = value;
+                } else {
+                    next[0] = value;
+                }
+            }
+            return next;
+        });
+        setRatingDirty(true);
+    };
+
+    const applyRatingRange = (range) => {
+        const nextRange = range || localRating;
+        setLocalRating(nextRange);
+        setRatingDirty(false);
+        onFiltersChange({
+            ...filters,
+            ratingRange: nextRange
+        });
+    };
+
+    const handleCitySelectionChange = (values) => {
+        onFiltersChange({
+            ...filters,
+            cities: values
+        });
+    };
+
+    const resetCityFilter = () => {
+        setCitySearch("");
+        onFiltersChange({
+            ...filters,
+            cities: []
+        });
+    };
+
     return (
         <Box
             bg={bgColor}
@@ -201,21 +303,63 @@ export default function FilterPanel({ filters, onFiltersChange, data = [] }) {
                 {/* Диапазон рейтингов */}
                 <Box>
                     <FormLabel fontSize="sm" fontWeight="semibold" mb={3}>
-                        Рейтинг: {filters.ratingRange[0]} - {filters.ratingRange[1]} звезд
+                        Рейтинг отзывов
                     </FormLabel>
-                    <RangeSlider
-                        value={filters.ratingRange}
-                        onChange={(value) => onFiltersChange({ ...filters, ratingRange: value })}
-                        min={1}
-                        max={5}
-                        step={1}
-                    >
-                        <RangeSliderTrack>
-                            <RangeSliderFilledTrack bg="yellow.400" />
-                        </RangeSliderTrack>
-                        <RangeSliderThumb index={0} />
-                        <RangeSliderThumb index={1} />
-                    </RangeSlider>
+                    <VStack align="stretch" spacing={3}>
+                        <ButtonGroup size="xs" variant="outline" isAttached>
+                            {ratingPresets.map(({ label, range }) => (
+                                <Button
+                                    key={label}
+                                    leftIcon={<Icon as={FiStar} />}
+                                    onClick={() => applyRatingRange(range)}
+                                    colorScheme={isRatingPresetActive(range) ? "yellow" : "gray"}
+                                    variant={isRatingPresetActive(range) ? "solid" : "outline"}
+                                >
+                                    {label}
+                                </Button>
+                            ))}
+                        </ButtonGroup>
+
+                        <HStack spacing={3} align="center">
+                            <NumberInput
+                                value={localRating[0]}
+                                min={1}
+                                max={5}
+                                step={1}
+                                size="sm"
+                                onChange={handleRatingInputChange(0)}
+                            >
+                                <NumberInputField />
+                                <NumberInputStepper>
+                                    <NumberIncrementStepper />
+                                    <NumberDecrementStepper />
+                                </NumberInputStepper>
+                            </NumberInput>
+                            <Text fontSize="sm" color="gray.500">до</Text>
+                            <NumberInput
+                                value={localRating[1]}
+                                min={1}
+                                max={5}
+                                step={1}
+                                size="sm"
+                                onChange={handleRatingInputChange(1)}
+                            >
+                                <NumberInputField />
+                                <NumberInputStepper>
+                                    <NumberIncrementStepper />
+                                    <NumberDecrementStepper />
+                                </NumberInputStepper>
+                            </NumberInput>
+                            <Button
+                                size="sm"
+                                colorScheme="yellow"
+                                onClick={() => applyRatingRange()}
+                                isDisabled={!ratingDirty}
+                            >
+                                Применить
+                            </Button>
+                        </HStack>
+                    </VStack>
                 </Box>
 
                 <Divider />
@@ -278,23 +422,95 @@ export default function FilterPanel({ filters, onFiltersChange, data = [] }) {
                 {/* Города */}
                 <Box>
                     <FormLabel fontSize="sm" fontWeight="semibold" mb={2}>
-                        Город ({cities.length} доступно)
+                        Города ({cities.length} доступно)
                     </FormLabel>
-                    <Select
-                        placeholder="Все города"
-                        value={filters.cities[0] || ""}
-                        onChange={(e) => onFiltersChange({
-                            ...filters,
-                            cities: e.target.value ? [e.target.value] : []
-                        })}
-                        size="sm"
-                    >
-                        {cities.map((city) => (
-                            <option key={city} value={city}>
-                                {city} ({data.filter(item => normalizeCity(item.city) === city).length})
-                            </option>
-                        ))}
-                    </Select>
+                    <Popover placement="bottom-start" closeOnBlur={false}>
+                        {({ onClose }) => (
+                            <>
+                                <PopoverTrigger>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        rightIcon={<Icon as={FiFilter} />}
+                                    >
+                                        {filters.cities.length === 0
+                                            ? "Все города"
+                                            : `${filters.cities.length} выбрано`}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent width="320px">
+                                    <PopoverHeader fontWeight="semibold">
+                                        Выберите города
+                                    </PopoverHeader>
+                                    <PopoverCloseButton />
+                                    <PopoverBody>
+                                        <VStack align="stretch" spacing={3} divider={<StackDivider />}> 
+                                            <InputGroup size="sm">
+                                                <InputLeftElement pointerEvents="none" color="gray.400">
+                                                    <Icon as={FiSearch} />
+                                                </InputLeftElement>
+                                                <Input
+                                                    placeholder="Поиск города..."
+                                                    value={citySearch}
+                                                    onChange={(e) => setCitySearch(e.target.value)}
+                                                />
+                                            </InputGroup>
+
+                                            <CheckboxGroup value={filters.cities} onChange={handleCitySelectionChange}>
+                                                <Stack spacing={2} maxH="240px" overflowY="auto">
+                                                    {filteredCities.length === 0 && (
+                                                        <Text fontSize="sm" color="gray.500">
+                                                            Ничего не найдено
+                                                        </Text>
+                                                    )}
+                                                    {filteredCities.map((city) => {
+                                                        const count = city === "Не указан" ? unspecifiedCount : cityCountMap[city] || 0;
+                                                        return (
+                                                            <Checkbox key={city} value={city} alignItems="flex-start">
+                                                                <HStack justify="space-between" w="full" align="flex-start">
+                                                                    <VStack spacing={0} align="flex-start">
+                                                                        <Text fontSize="sm">{city}</Text>
+                                                                        <Text fontSize="xs" color="gray.500">{count} отзывов</Text>
+                                                                    </VStack>
+                                                                    <Badge colorScheme="blue" variant="subtle">{count}</Badge>
+                                                                </HStack>
+                                                            </Checkbox>
+                                                        );
+                                                    })}
+                                                </Stack>
+                                            </CheckboxGroup>
+
+                                            <HStack>
+                                                <Button size="xs" variant="ghost" onClick={resetCityFilter}>
+                                                    Сбросить
+                                                </Button>
+                                                <Spacer />
+                                                <Text fontSize="xs" color="gray.500">
+                                                    Выбрано: {filters.cities.length}
+                                                </Text>
+                                                <Button size="xs" colorScheme="brand" variant="solid" onClick={onClose}>
+                                                    Готово
+                                                </Button>
+                                            </HStack>
+                                        </VStack>
+                                    </PopoverBody>
+                                </PopoverContent>
+                            </>
+                        )}
+                    </Popover>
+
+                    {filters.cities.length > 0 && (
+                        <Wrap spacing={2} mt={3}>
+                            {filters.cities.map(city => (
+                                <WrapItem key={city}>
+                                    <Tag size="sm" borderRadius="full" colorScheme="brand">
+                                        <TagLabel>{city}</TagLabel>
+                                        <TagCloseButton onClick={() => handleCitySelectionChange(filters.cities.filter(item => item !== city))} />
+                                    </Tag>
+                                </WrapItem>
+                            ))}
+                        </Wrap>
+                    )}
                 </Box>
             </VStack>
         </Box>

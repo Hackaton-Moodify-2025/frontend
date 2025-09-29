@@ -4,18 +4,46 @@ import {
     VStack,
     HStack,
     SimpleGrid,
-    Progress,
     Badge,
     useColorModeValue,
     Icon,
     Tooltip,
-    Divider
+    Divider,
+    Button,
+    ButtonGroup,
+    Wrap,
+    WrapItem,
+    Tag,
+    Flex
 } from "@chakra-ui/react";
-import { FiMapPin, FiUsers, FiTrendingUp, FiTrendingDown } from "react-icons/fi";
+import {
+    FiMapPin,
+    FiUsers,
+    FiTrendingUp,
+    FiFilter,
+    FiAward,
+    FiAlertTriangle
+} from "react-icons/fi";
 
-export default function GeographicInsights({ data }) {
+const parseDate = (value) => {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+};
+
+export default function GeographicInsights({ data, onQuickFilter }) {
     const bgColor = useColorModeValue("white", "gray.800");
     const borderColor = useColorModeValue("gray.200", "gray.600");
+    const subtleBg = useColorModeValue("gray.50", "gray.700");
+    const neutralBg = useColorModeValue("gray.100", "gray.600");
+    const positiveBg = useColorModeValue("green.100", "green.900");
+    const negativeBg = useColorModeValue("red.100", "red.900");
+
+    const now = new Date();
+    const last30 = new Date(now.getTime());
+    last30.setDate(last30.getDate() - 30);
+    const prev60 = new Date(now.getTime());
+    prev60.setDate(prev60.getDate() - 60);
 
     // Функция для нормализации названий городов
     const normalizeCity = (city) => {
@@ -23,7 +51,6 @@ export default function GeographicInsights({ data }) {
 
         const normalized = city.toString().trim();
 
-        // Приводим к единому формату
         const cityMappings = {
             'спб': 'Санкт-Петербург',
             'санкт-петербург': 'Санкт-Петербург',
@@ -86,15 +113,16 @@ export default function GeographicInsights({ data }) {
             'волга': 'Поволжье',
             'россия': 'Россия (общее)',
             'рф': 'Россия (общее)',
-            'вернуласьчитаю': 'Не указан', // из данных
+            'вернуласьчитаю': 'Не указан'
         };
 
         const lower = normalized.toLowerCase();
         return cityMappings[lower] || normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase();
     };
 
-    // Обработка географических данных
     const cityStats = {};
+    const cityTrends = {};
+
     data.forEach(review => {
         const city = normalizeCity(review.city);
         if (!cityStats[city]) {
@@ -102,15 +130,25 @@ export default function GeographicInsights({ data }) {
                 count: 0,
                 positive: 0,
                 negative: 0,
-                avgRating: 0,
                 totalRating: 0,
                 ratings: []
             };
         }
 
+        if (!cityTrends[city]) {
+            cityTrends[city] = {
+                recent: 0,
+                previous: 0
+            };
+        }
+
         cityStats[city].count++;
 
-        // Подсчет настроений
+        const date = parseDate(review.date);
+        const period = !date || date >= last30 ? "recent" : (date >= prev60 ? "previous" : null);
+        if (period === "recent") cityTrends[city].recent++;
+        if (period === "previous") cityTrends[city].previous++;
+
         if (review.sentiments?.includes("положительно")) {
             cityStats[city].positive++;
         }
@@ -118,43 +156,78 @@ export default function GeographicInsights({ data }) {
             cityStats[city].negative++;
         }
 
-        // Рейтинги
-        const rating = parseInt(review.rating) || 0;
+        const rating = parseInt(review.rating, 10) || 0;
         if (rating > 0) {
             cityStats[city].ratings.push(rating);
             cityStats[city].totalRating += rating;
         }
     });
 
-    // Вычисляем средние рейтинги
-    Object.keys(cityStats).forEach(city => {
-        const stats = cityStats[city];
-        stats.avgRating = stats.ratings.length > 0
-            ? (stats.totalRating / stats.ratings.length).toFixed(1)
+    const cityDetails = Object.entries(cityStats).map(([city, stats]) => {
+        const averageRating = stats.ratings.length > 0
+            ? Number((stats.totalRating / stats.ratings.length).toFixed(1))
             : 0;
+        const positivePercent = stats.count ? Number(((stats.positive / stats.count) * 100).toFixed(1)) : 0;
+        const negativePercent = stats.count ? Number(((stats.negative / stats.count) * 100).toFixed(1)) : 0;
+        const neutralPercent = Math.max(0, Number((100 - positivePercent - negativePercent).toFixed(1)));
+
+        return {
+            city,
+            ...stats,
+            avgRating: averageRating,
+            positivePercent,
+            negativePercent,
+            neutralPercent
+        };
     });
 
-    // Сортируем города по количеству отзывов
-    const sortedCities = Object.entries(cityStats)
-        .filter(([city, stats]) => stats.count >= 2) // Только города с 2+ отзывами
-        .sort(([, a], [, b]) => b.count - a.count)
+    const sortedCities = cityDetails
+        .filter(item => item.count >= 2)
+        .sort((a, b) => b.count - a.count)
         .slice(0, 8);
 
-    // Статистика
-    const totalCities = Object.keys(cityStats).length;
-    const mostActiveCities = sortedCities.slice(0, 3);
+    const topPositiveCities = [...sortedCities]
+        .sort((a, b) => b.positivePercent - a.positivePercent)
+        .slice(0, 3);
 
-    // Лучший и худший город по настроениям
-    const citiesByPositivity = sortedCities
-        .map(([city, stats]) => ({
-            city,
-            positivityRate: stats.count > 0 ? (stats.positive / stats.count * 100) : 0,
-            count: stats.count
-        }))
-        .sort((a, b) => b.positivityRate - a.positivityRate);
+    const topNegativeCities = [...sortedCities]
+        .sort((a, b) => b.negativePercent - a.negativePercent)
+        .slice(0, 3);
 
-    const bestCity = citiesByPositivity[0];
-    const worstCity = citiesByPositivity[citiesByPositivity.length - 1];
+    const cityTrendDetails = Object.entries(cityTrends).map(([city, trend]) => ({
+        city,
+        ...trend
+    }));
+
+    const hotCities = cityTrendDetails
+        .filter(item => item.recent >= 2)
+        .sort((a, b) => b.recent - a.recent)
+        .slice(0, 4);
+
+    const cityTrendMap = Object.fromEntries(cityTrendDetails.map(item => [item.city, item]));
+
+    const totalCities = cityDetails.length;
+    const totalReviews = cityDetails.reduce((acc, city) => acc + city.count, 0);
+    const totalPositive = cityDetails.reduce((acc, city) => acc + city.positive, 0);
+    const totalNegative = cityDetails.reduce((acc, city) => acc + city.negative, 0);
+    const ratingSum = cityDetails.reduce((acc, city) => acc + city.totalRating, 0);
+    const ratingCount = cityDetails.reduce((acc, city) => acc + city.ratings.length, 0);
+
+    const overallPositivity = totalReviews ? Number(((totalPositive / totalReviews) * 100).toFixed(1)) : 0;
+    const overallNegativity = totalReviews ? Number(((totalNegative / totalReviews) * 100).toFixed(1)) : 0;
+    const overallRating = ratingCount ? Number((ratingSum / ratingCount).toFixed(1)) : 0;
+
+    const bestCity = topPositiveCities[0];
+    const worstCity = topNegativeCities[0];
+
+    const handleCityFilter = (cities, options) => {
+        if (!onQuickFilter || !cities || cities.length === 0) return;
+        onQuickFilter({ cities }, options);
+    };
+
+    const clearCityFilter = () => {
+        onQuickFilter?.({ cities: [] });
+    };
 
     return (
         <Box
@@ -166,114 +239,207 @@ export default function GeographicInsights({ data }) {
             shadow="lg"
         >
             <VStack align="stretch" spacing={6}>
-                <Text fontSize="lg" fontWeight="bold" color="brand.500">
-                    Географическая аналитика
-                </Text>
+                <HStack justify="space-between" align={{ base: "flex-start", md: "center" }} spacing={4}>
+                    <VStack align="flex-start" spacing={1}>
+                        <Text fontSize="lg" fontWeight="bold" color="brand.500">
+                            Географическая аналитика
+                        </Text>
+                        <Text fontSize="xs" color="gray.500">
+                            Где концентрируются лояльные клиенты и зоны риска
+                        </Text>
+                    </VStack>
 
-                {/* Общая статистика */}
-                <SimpleGrid columns={3} spacing={4}>
-                    <Box textAlign="center">
-                        <Text fontSize="2xl" fontWeight="bold" color="brand.500">
-                            {totalCities}
-                        </Text>
-                        <Text fontSize="sm" color="gray.600">городов</Text>
+                    <ButtonGroup size="xs" variant="ghost" colorScheme="brand">
+                        <Tooltip label="Показать города с наилучшей динамикой">
+                            <Button
+                                leftIcon={<FiTrendingUp />}
+                                onClick={() => handleCityFilter(hotCities.map(item => item.city))}
+                                isDisabled={hotCities.length === 0}
+                            >
+                                Рост
+                            </Button>
+                        </Tooltip>
+                        <Tooltip label="Сфокусироваться на лояльных регионах">
+                            <Button
+                                leftIcon={<FiAward />}
+                                colorScheme="green"
+                                onClick={() => handleCityFilter(topPositiveCities.map(item => item.city))}
+                                isDisabled={topPositiveCities.length === 0}
+                            >
+                                Лидеры
+                            </Button>
+                        </Tooltip>
+                        <Tooltip label="Выделить города с высоким негативом">
+                            <Button
+                                leftIcon={<FiAlertTriangle />}
+                                colorScheme="red"
+                                onClick={() => handleCityFilter(topNegativeCities.map(item => item.city))}
+                                isDisabled={topNegativeCities.length === 0}
+                            >
+                                Антирейтинг
+                            </Button>
+                        </Tooltip>
+                        <Tooltip label="Очистить фильтр по городам">
+                            <Button leftIcon={<FiFilter />} onClick={clearCityFilter}>
+                                Все города
+                            </Button>
+                        </Tooltip>
+                    </ButtonGroup>
+                </HStack>
+
+                <SimpleGrid columns={{ base: 1, md: 4 }} spacing={4}>
+                    <Box p={4} borderRadius="lg" bg={subtleBg}>
+                        <Text fontSize="xs" color="gray.500">География</Text>
+                        <Text fontSize="2xl" fontWeight="bold" color="brand.500">{totalCities}</Text>
+                        <Text fontSize="xs" color="gray.500">активных локаций</Text>
                     </Box>
-                    <Box textAlign="center">
-                        <Text fontSize="2xl" fontWeight="bold" color="green.500">
-                            {bestCity?.city || "—"}
-                        </Text>
-                        <Text fontSize="sm" color="gray.600">лучший рейтинг</Text>
+                    <Box p={4} borderRadius="lg" bg={subtleBg}>
+                        <Text fontSize="xs" color="gray.500">Отзывы</Text>
+                        <Text fontSize="2xl" fontWeight="bold" color="blue.500">{totalReviews}</Text>
+                        <Text fontSize="xs" color="gray.500">за выбранный период</Text>
                     </Box>
-                    <Box textAlign="center">
-                        <Text fontSize="2xl" fontWeight="bold" color="red.500">
-                            {worstCity?.city || "—"}
+                    <Box p={4} borderRadius="lg" bg={subtleBg}>
+                        <Text fontSize="xs" color="gray.500">Средний рейтинг</Text>
+                        <Text fontSize="2xl" fontWeight="bold" color={overallRating >= 4 ? "green.500" : "orange.500"}>{overallRating || "—"}</Text>
+                        <Text fontSize="xs" color="gray.500">по всем отзывам</Text>
+                    </Box>
+                    <Box p={4} borderRadius="lg" bg={subtleBg}>
+                        <Text fontSize="xs" color="gray.500">Баланс настроений</Text>
+                        <HStack spacing={2} mt={1}>
+                            <Badge colorScheme="green" variant="solid">{overallPositivity}% 👍</Badge>
+                            <Badge colorScheme="red" variant="subtle">{overallNegativity}% 👎</Badge>
+                        </HStack>
+                        <Text fontSize="xs" color="gray.500" mt={1}>по всей стране</Text>
+                    </Box>
+                </SimpleGrid>
+
+                {hotCities.length > 0 && (
+                    <VStack align="stretch" spacing={2}>
+                        <Text fontSize="sm" fontWeight="semibold">
+                            Города с максимальным ростом интереса
                         </Text>
-                        <Text fontSize="sm" color="gray.600">требует внимания</Text>
+                        <Wrap spacing={2}>
+                            {hotCities.map(({ city, recent }) => (
+                                <WrapItem key={city}>
+                                    <Tag borderRadius="full" px={3} py={1} colorScheme="green">
+                                        <HStack spacing={2}>
+                                            <Icon as={FiTrendingUp} />
+                                            <Text fontSize="sm">{city}</Text>
+                                            <Badge variant="subtle">{recent} отзывов</Badge>
+                                        </HStack>
+                                    </Tag>
+                                </WrapItem>
+                            ))}
+                        </Wrap>
+                    </VStack>
+                )}
+
+                <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                    <Box p={4} bg={positiveBg} borderRadius="lg">
+                        <HStack mb={2} spacing={2}>
+                            <Icon as={FiAward} color="green.500" />
+                            <Text fontSize="sm" fontWeight="semibold">Лидеры по лояльности</Text>
+                        </HStack>
+                        <VStack align="stretch" spacing={2}>
+                            {topPositiveCities.map(city => (
+                                <HStack key={city.city} justify="space-between">
+                                    <Text fontSize="xs" noOfLines={1}>{city.city}</Text>
+                                    <Badge colorScheme="green" variant="subtle">{city.positivePercent}%</Badge>
+                                </HStack>
+                            ))}
+                            {topPositiveCities.length === 0 && (
+                                <Text fontSize="xs" color="gray.500">Недостаточно данных</Text>
+                            )}
+                        </VStack>
+                    </Box>
+
+                    <Box p={4} bg={negativeBg} borderRadius="lg">
+                        <HStack mb={2} spacing={2}>
+                            <Icon as={FiAlertTriangle} color="red.500" />
+                            <Text fontSize="sm" fontWeight="semibold">Зоны риска</Text>
+                        </HStack>
+                        <VStack align="stretch" spacing={2}>
+                            {topNegativeCities.map(city => (
+                                <HStack key={city.city} justify="space-between">
+                                    <Text fontSize="xs" noOfLines={1}>{city.city}</Text>
+                                    <Badge colorScheme="red" variant="subtle">{city.negativePercent}%</Badge>
+                                </HStack>
+                            ))}
+                            {topNegativeCities.length === 0 && (
+                                <Text fontSize="xs" color="gray.500">Ярко выраженных проблем не найдено</Text>
+                            )}
+                        </VStack>
                     </Box>
                 </SimpleGrid>
 
                 <Divider />
 
-                {/* Детализация по городам */}
                 <VStack align="stretch" spacing={4}>
-                    <Text fontSize="md" fontWeight="semibold">
-                        Активность по регионам
-                    </Text>
-
-                    {sortedCities.map(([city, stats]) => {
-                        const positivityRate = (stats.positive / stats.count * 100).toFixed(1);
-                        const negativityRate = (stats.negative / stats.count * 100).toFixed(1);
+                    {sortedCities.map(city => {
+                        const trend = cityTrendMap[city.city];
+                        const recent = trend?.recent ?? 0;
 
                         return (
-                            <Box key={city}>
-                                <HStack justify="space-between" mb={2}>
-                                    <HStack>
-                                        <Icon as={FiMapPin} color="brand.500" boxSize={4} />
-                                        <Text fontSize="sm" fontWeight="semibold">
-                                            {city}
-                                        </Text>
-                                        {parseFloat(negativityRate) > 70 && (
-                                            <Tooltip label="Высокий уровень негатива">
-                                                <Icon as={FiTrendingDown} color="red.500" boxSize={4} />
-                                            </Tooltip>
-                                        )}
-                                        {parseFloat(positivityRate) > 70 && (
-                                            <Tooltip label="Высокий уровень позитива">
-                                                <Icon as={FiTrendingUp} color="green.500" boxSize={4} />
-                                            </Tooltip>
-                                        )}
+                            <Box key={city.city} p={4} bg={subtleBg} borderRadius="lg">
+                                <HStack justify="space-between" align="flex-start">
+                                    <HStack spacing={3} align="flex-start">
+                                        <Icon as={FiMapPin} color="brand.500" boxSize={5} mt={1} />
+                                        <VStack align="flex-start" spacing={1}>
+                                            <Text fontSize="sm" fontWeight="semibold">{city.city}</Text>
+                                            <HStack spacing={2}>
+                                                <Badge colorScheme="blue" variant="subtle"><Icon as={FiUsers} mr={1} />{city.count}</Badge>
+                                                <Badge colorScheme={city.avgRating >= 3.5 ? "green" : "orange"} variant="solid">⭐ {city.avgRating || "—"}</Badge>
+                                                <Badge colorScheme={city.positivePercent >= 60 ? "green" : "gray"} variant="subtle">{city.positivePercent}% 👍</Badge>
+                                                {city.negativePercent >= 50 && (
+                                                    <Badge colorScheme="red" variant="solid">Негатив {city.negativePercent}%</Badge>
+                                                )}
+                                            </HStack>
+                                        </VStack>
                                     </HStack>
 
-                                    <HStack spacing={3}>
-                                        <Badge colorScheme="blue" variant="outline" fontSize="xs">
-                                            <Icon as={FiUsers} mr={1} />
-                                            {stats.count}
-                                        </Badge>
-                                        <Badge
-                                            colorScheme={stats.avgRating >= 3 ? "green" : "red"}
-                                            variant="subtle"
-                                            fontSize="xs"
+                                    <VStack align="flex-end" spacing={2}>
+                                        {recent > 0 && (
+                                            <Badge colorScheme="blue" variant="subtle">
+                                                {recent} отзывов за 30 дней
+                                            </Badge>
+                                        )}
+                                        <Button
+                                            leftIcon={<FiFilter />}
+                                            size="xs"
+                                            variant="ghost"
+                                            colorScheme="brand"
+                                            onClick={() => handleCityFilter([city.city])}
                                         >
-                                            ⭐ {stats.avgRating}
-                                        </Badge>
-                                        <Badge
-                                            colorScheme={parseFloat(positivityRate) > 50 ? "green" : "red"}
-                                            variant="subtle"
-                                            fontSize="xs"
-                                        >
-                                            {positivityRate}% 👍
-                                        </Badge>
-                                    </HStack>
+                                            Фильтр по городу
+                                        </Button>
+                                    </VStack>
                                 </HStack>
 
-                                <Progress
-                                    value={100}
-                                    size="sm"
-                                    borderRadius="full"
-                                    bg="red.100"
-                                >
-                                    <Box
-                                        h="100%"
-                                        w={`${positivityRate}%`}
-                                        bg="green.400"
-                                        borderRadius="full"
-                                    />
-                                </Progress>
+                                <Flex mt={3} h="10px" borderRadius="full" overflow="hidden" bg={neutralBg}>
+                                    <Box flexBasis={`${city.positivePercent}%`} bg="green.400" />
+                                    <Box flexBasis={`${city.neutralPercent}%`} bg="gray.300" />
+                                    <Box flexBasis={`${city.negativePercent}%`} bg="red.400" />
+                                </Flex>
+
+                                <HStack mt={3} spacing={2}>
+                                    <Badge colorScheme="green" variant="subtle">{city.positivePercent}% позитив</Badge>
+                                    <Badge colorScheme="gray" variant="subtle">{city.neutralPercent}% нейтрально</Badge>
+                                    <Badge colorScheme="red" variant="subtle">{city.negativePercent}% негатив</Badge>
+                                </HStack>
                             </Box>
                         );
                     })}
                 </VStack>
 
-                {/* Инсайты и рекомендации */}
                 {(bestCity && worstCity && bestCity.city !== worstCity.city) && (
-                    <Box mt={4} p={4} bg="blue.50" borderRadius="lg" border="1px" borderColor="blue.200">
-                        <Text fontSize="sm" fontWeight="bold" color="blue.700" mb={2}>
+                    <Box mt={2} p={4} bg={useColorModeValue("blue.50", "blue.900")} borderRadius="lg" border="1px" borderColor={useColorModeValue("blue.200", "blue.700")}>
+                        <Text fontSize="sm" fontWeight="bold" color={useColorModeValue("blue.700", "blue.200")} mb={2}>
                             📍 Географические инсайты
                         </Text>
-                        <Text fontSize="xs" color="blue.600">
-                            <strong>{bestCity.city}</strong> показывает {bestCity.positivityRate.toFixed(1)}% позитивных отзывов,
-                            в то время как <strong>{worstCity.city}</strong> имеет только {worstCity.positivityRate.toFixed(1)}%.
-                            Рекомендуется изучить лучшие практики из {bestCity.city}.
+                        <Text fontSize="xs" color={useColorModeValue("blue.700", "blue.100")}>
+                            Локация <strong>{bestCity.city}</strong> демонстрирует {bestCity.positivePercent}% позитивных отзывов и средний рейтинг {bestCity.avgRating}.<br />
+                            <strong>{worstCity.city}</strong> отстаёт с {worstCity.positivePercent}% позитива и высоким уровнем негатива {worstCity.negativePercent}%.
+                            Изучите лучшие практики лидеров и усилите поддержку в зонах риска.
                         </Text>
                     </Box>
                 )}
