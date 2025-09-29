@@ -105,6 +105,15 @@ export default function AdvancedTimelines({ data }) {
         });
     };
 
+    const formatDateWithYear = (dateStr) => {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('ru-RU', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
+    };
+
     // Компонент для отображения разных типов графиков
     const renderChart = () => {
         const commonProps = {
@@ -127,7 +136,7 @@ export default function AdvancedTimelines({ data }) {
                             />
                             <YAxis fontSize={12} />
                             <RechartsTooltip
-                                labelFormatter={(value) => formatDate(value)}
+                                labelFormatter={(value) => formatDateWithYear(value)}
                                 formatter={(value, name) => [value, name === 'positive' ? 'Позитивные' : name === 'negative' ? 'Негативные' : 'Нейтральные']}
                             />
                             <Legend />
@@ -174,7 +183,7 @@ export default function AdvancedTimelines({ data }) {
                             />
                             <YAxis domain={[1, 5]} fontSize={12} />
                             <RechartsTooltip
-                                labelFormatter={(value) => formatDate(value)}
+                                labelFormatter={(value) => formatDateWithYear(value)}
                                 formatter={(value) => [value, 'Средний рейтинг']}
                             />
                             <Line
@@ -201,7 +210,7 @@ export default function AdvancedTimelines({ data }) {
                             />
                             <YAxis fontSize={12} />
                             <RechartsTooltip
-                                labelFormatter={(value) => formatDate(value)}
+                                labelFormatter={(value) => formatDateWithYear(value)}
                                 formatter={(value) => [value, 'Количество отзывов']}
                             />
                             <Bar
@@ -267,6 +276,9 @@ export default function AdvancedTimelines({ data }) {
                             <option value="14">2 недели</option>
                             <option value="30">30 дней</option>
                             <option value="90">3 месяца</option>
+                            <option value="180">180 дней</option>
+                            <option value="365">1 год</option>
+                            <option value="730">2 года</option>
                         </Select>
                     </HStack>
                 </HStack>

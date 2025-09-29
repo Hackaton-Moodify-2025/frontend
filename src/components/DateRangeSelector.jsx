@@ -172,8 +172,6 @@ export default function DateRangeSelector({ filters, onFiltersChange, data = [] 
                             type="date"
                             value={dateFrom}
                             onChange={(e) => handleDateFromChange(e.target.value)}
-                            min={minDate}
-                            max={dateTo || maxDate}
                             size="sm"
                         />
                     </VStack>
@@ -184,8 +182,6 @@ export default function DateRangeSelector({ filters, onFiltersChange, data = [] 
                             type="date"
                             value={dateTo}
                             onChange={(e) => handleDateToChange(e.target.value)}
-                            min={dateFrom || minDate}
-                            max={maxDate}
                             size="sm"
                         />
                     </VStack>

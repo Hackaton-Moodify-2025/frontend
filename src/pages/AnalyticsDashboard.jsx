@@ -439,12 +439,6 @@ export default function AnalyticsDashboard() {
               <GeographicInsights data={filteredData} />
             </SimpleGrid>
 
-            {/* Обычные KPI */}
-            <KpiCards stats={legacyStats} />
-
-            {/* Временная линия */}
-            <ReviewsTimeline data={timelineData} />
-
             {/* Продвинутые компоненты в двух колонках */}
             <SimpleGrid columns={{ base: 1, xl: 2 }} spacing={6}>
               <WordCloudAnalysis data={filteredData} />
