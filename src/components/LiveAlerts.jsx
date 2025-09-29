@@ -52,8 +52,8 @@ export default function LiveAlerts({ data }) {
         const totalReviews = data.length;
         const negativeReviews = data.filter(r => r.sentiments?.includes("отрицательно"));
         const validRatings = data.map(r => parseInt(r.rating)).filter(r => !isNaN(r) && r > 0);
-        const avgRating = validRatings.length > 0 
-            ? validRatings.reduce((a, b) => a + b, 0) / validRatings.length 
+        const avgRating = validRatings.length > 0
+            ? validRatings.reduce((a, b) => a + b, 0) / validRatings.length
             : 0;
 
         // Критические темы

@@ -24,15 +24,9 @@ export default function ReviewPage() {
         setLoading(true);
         setError(null);
 
-        // Получаем аналитику (где есть все отзывы)
-        const analyticsData = await reviewsAPI.getAnalytics();
-        const foundReview = analyticsData.reviews.find(r => r.id === Number(id));
-
-        if (foundReview) {
-          setReview(foundReview);
-        } else {
-          setError('Отзыв не найден');
-        }
+        // Получаем конкретный отзыв по ID
+        const reviewData = await reviewsAPI.getReviewById(id);
+        setReview(reviewData);
       } catch (err) {
         setError(err.message);
       } finally {

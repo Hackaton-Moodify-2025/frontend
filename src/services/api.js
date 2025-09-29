@@ -47,6 +47,20 @@ class ReviewsAPI {
         return response.json();
     }
 
+    // Get single review by ID
+    async getReviewById(id) {
+        const response = await fetch(`${this.baseURL}/reviews/${id}`);
+
+        if (!response.ok) {
+            if (response.status === 404) {
+                throw new Error('Отзыв не найден');
+            }
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return response.json();
+    }
+
     // Health check
     async healthCheck() {
         const response = await fetch('http://localhost:8080/health');
