@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { Box, Text, Badge, HStack, Link, Image, Button, VStack } from "@chakra-ui/react";
-import { mockReviews } from "../mocks/reviews.js";
-import { siteReviews } from "../mocks/siteReviews.js";
+import { Box, Text, Badge, HStack, Link, Image, Button, VStack, Spinner, Alert, AlertIcon, Center } from "@chakra-ui/react";
+import { useEffect, useState } from "react";
+import reviewsAPI from "../services/api";
 
 function getHost(url) {
   try {
@@ -14,59 +14,117 @@ function getHost(url) {
 export default function ReviewPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const review = mockReviews.predictions.find((p) => p.id === Number(id));
-  const full = siteReviews.find((r) => r.id === Number(id));
-  const merged = { ...review, ...full };
+  const [review, setReview] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  if (!merged) return <Text p={6}>Отзыв не найден</Text>;
+  useEffect(() => {
+    const fetchReview = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  const host = getHost(merged.link);
+        // Получаем конкретный отзыв по ID
+        const reviewData = await reviewsAPI.getReviewById(id);
+        setReview(reviewData);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) {
+      fetchReview();
+    }
+  }, [id]);
+
+  if (loading) {
+    return (
+      <Center py={20}>
+        <VStack spacing={4}>
+          <Spinner size="xl" color="brand.500" />
+          <Text>Загрузка отзыва...</Text>
+        </VStack>
+      </Center>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box py={6}>
+        <Alert status="error" rounded="lg">
+          <AlertIcon />
+          <Box>
+            <Text fontWeight="bold">Ошибка загрузки</Text>
+            <Text fontSize="sm">{error}</Text>
+          </Box>
+        </Alert>
+      </Box>
+    );
+  }
+
+  if (!review) {
+    return (
+      <Box py={6}>
+        <Text p={6}>Отзыв не найден</Text>
+      </Box>
+    );
+  }
+
+  const host = getHost(review.link);
 
   return (
-    <Box p={6} bg="white" rounded="lg" boxShadow="md">
-      <Button mb={4} onClick={() => navigate(-1)} colorScheme="brand">
-        ← Назад
-      </Button>
+    <Box py={6}>
+      <Box bg="white" p={6} rounded="lg" boxShadow="md">
+        <Button mb={4} onClick={() => navigate(-1)} colorScheme="brand">
+          ← Назад
+        </Button>
 
-      <HStack mb={4}>
-        {host && (
-          <Image
-            src={`/logos/${host.split(".")[0]}.png`}
-            alt={host}
-            boxSize="24px"
-          />
+        <HStack mb={4}>
+          {host && (
+            <Image
+              src={`/logos/${host.split(".")[0]}.png`}
+              alt={host}
+              boxSize="24px"
+            />
+          )}
+          <Text fontWeight="bold" fontSize="xl">{review.title}</Text>
+        </HStack>
+
+        <Text fontSize="sm" color="gray.600" mb={4}>
+          {review.date} · {review.city} · ⭐ {review.rating}
+        </Text>
+
+        <Text mb={6}>{review.text}</Text>
+
+        {review.topics && review.topics.length > 0 && (
+          <VStack align="start" spacing={2} mb={6}>
+            {review.topics.map((topic, i) => (
+              <HStack key={i} spacing={2}>
+                <Badge colorScheme="blue">{topic}</Badge>
+                {review.sentiments && review.sentiments[i] && (
+                  <Badge
+                    colorScheme={
+                      review.sentiments[i] === "отрицательно"
+                        ? "red"
+                        : review.sentiments[i] === "положительно"
+                          ? "green"
+                          : "gray"
+                    }
+                  >
+                    {review.sentiments[i]}
+                  </Badge>
+                )}
+              </HStack>
+            ))}
+          </VStack>
         )}
-        <Text fontWeight="bold" fontSize="xl">{merged.title}</Text>
-      </HStack>
 
-      <Text fontSize="sm" color="gray.600" mb={4}>
-        {merged.date} · {merged.city} · ⭐ {merged.rating}
-      </Text>
-
-      <Text mb={6}>{merged.text}</Text>
-
-      <VStack align="start" spacing={2} mb={6}>
-        {merged.topics.map((t, i) => (
-          <HStack key={i} spacing={2}>
-            <Badge colorScheme="blue">{t}</Badge>
-            <Badge
-              colorScheme={
-                merged.sentiments[i] === "отрицательно"
-                  ? "red"
-                  : merged.sentiments[i] === "положительно"
-                  ? "green"
-                  : "gray"
-              }
-            >
-              {merged.sentiments[i]}
-            </Badge>
-          </HStack>
-        ))}
-      </VStack>
-
-      <Link href={merged.link} isExternal mt={6} display="block" color="brand.500">
-        Открыть оригинал ({host})
-      </Link>
+        <Link href={review.link} isExternal mt={6} display="block" color="brand.500">
+          Открыть оригинал ({host})
+        </Link>
+      </Box>
     </Box>
   );
 }
