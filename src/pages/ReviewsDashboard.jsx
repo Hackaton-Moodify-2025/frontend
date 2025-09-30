@@ -142,17 +142,19 @@ export default function DashboardPage() {
 
       {/* Error Alert */}
       {error && (
-        <Alert status="error" mb={6} rounded="lg">
-          <AlertIcon />
-          <Box>
-            <Text fontWeight="bold">Ошибка загрузки данных</Text>
-            <Text fontSize="sm">{error}</Text>
-          </Box>
-          <Button ml="auto" size="sm" onClick={refresh}>
-            Повторить
-          </Button>
-        </Alert>
-      )}
+      <Alert status="error" mb={6} rounded="lg">
+        <AlertIcon />
+        <Box>
+          <Text fontWeight="bold">
+            Ошибка загрузки {error.status ? `(${error.status})` : ""}
+          </Text>
+          <Text fontSize="sm">{error.message}</Text>
+        </Box>
+        <Button ml="auto" size="sm" onClick={refresh} colorScheme="brand" variant="outline">
+          Повторить
+        </Button>
+      </Alert>
+    )}
 
       {/* Loading State */}
       {loading && (
