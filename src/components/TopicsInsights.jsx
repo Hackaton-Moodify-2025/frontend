@@ -159,7 +159,7 @@ export default function TopicsInsights({ data, onQuickFilter }) {
                         </Text>
                     </VStack>
 
-                    <ButtonGroup size="xs" variant="ghost" colorScheme="brand">
+                    <ButtonGroup size="xs" variant="ghost" colorScheme="brand" display={{ base: "none", lg: "flex" }}>
                         <Tooltip label="Показать самые проблемные темы">
                             <Button
                                 leftIcon={<FiAlertTriangle />}

@@ -143,33 +143,128 @@ export default function ExportTools({ data, filters }) {
                 ? (validRatings.reduce((a, b) => a + b, 0) / validRatings.length).toFixed(2)
                 : 'Н/Д';
 
-            // Топ темы
-            const topicsCount = {};
+            const formatShare = (part, total) => {
+                if (!total) return '0.0';
+                return ((part / total) * 100).toFixed(1);
+            };
+
+            // Темы и настроения
+            const topicSentimentMap = {};
             data.forEach(review => {
-                review.topics?.forEach(topic => {
-                    topicsCount[topic] = (topicsCount[topic] || 0) + 1;
+                review.topics?.forEach((topic, index) => {
+                    if (!topicSentimentMap[topic]) {
+                        topicSentimentMap[topic] = { total: 0, positive: 0, neutral: 0, negative: 0 };
+                    }
+                    const entry = topicSentimentMap[topic];
+                    entry.total += 1;
+                    const sentiment = review.sentiments?.[index];
+                    if (sentiment === "положительно") entry.positive += 1;
+                    if (sentiment === "отрицательно") entry.negative += 1;
+                    if (sentiment === "нейтрально") entry.neutral += 1;
                 });
             });
 
-            const topTopics = Object.entries(topicsCount)
+            const topTopics = Object.entries(topicSentimentMap)
+                .sort(([, a], [, b]) => b.total - a.total)
+                .slice(0, 5)
+                .map(([topic, stats]) => {
+                    const positiveShare = formatShare(stats.positive, stats.total);
+                    const negativeShare = formatShare(stats.negative, stats.total);
+                    return `${topic}: ${stats.total} упоминаний (позитив ${positiveShare}%, негатив ${negativeShare}%)`;
+                });
+
+            const criticalTopics = Object.entries(topicSentimentMap)
+                .filter(([, stats]) => stats.total >= 5)
+                .map(([topic, stats]) => ({
+                    topic,
+                    negativeRate: formatShare(stats.negative, stats.total),
+                    negative: stats.negative,
+                    total: stats.total
+                }))
+                .filter(item => Number(item.negativeRate) >= 40)
+                .sort((a, b) => Number(b.negativeRate) - Number(a.negativeRate))
+                .slice(0, 3)
+                .map(item => `${item.topic} — ${item.negativeRate}% негатива (${item.negative} из ${item.total})`);
+
+            const championTopics = Object.entries(topicSentimentMap)
+                .filter(([, stats]) => stats.total >= 5)
+                .map(([topic, stats]) => ({
+                    topic,
+                    positiveRate: formatShare(stats.positive, stats.total),
+                    positive: stats.positive,
+                    total: stats.total
+                }))
+                .filter(item => Number(item.positiveRate) >= 55)
+                .sort((a, b) => Number(b.positiveRate) - Number(a.positiveRate))
+                .slice(0, 3)
+                .map(item => `${item.topic} — ${item.positiveRate}% позитива (${item.positive} из ${item.total})`);
+
+            // Города
+            const cityMap = {};
+            data.forEach(review => {
+                const city = review.city || "Не указан";
+                cityMap[city] = (cityMap[city] || 0) + 1;
+            });
+
+            const topCities = Object.entries(cityMap)
                 .sort(([, a], [, b]) => b - a)
                 .slice(0, 5)
-                .map(([topic, count]) => `${topic}: ${count} упоминаний`)
-                .join('\n');
+                .map(([city, count]) => `${city}: ${count} отзывов`);
+
+            const truncate = (text, limit = 220) => {
+                if (!text) return "(текст отсутствует)";
+                const cleaned = text.replace(/\s+/g, ' ').trim();
+                return cleaned.length > limit ? `${cleaned.slice(0, limit)}…` : cleaned;
+            };
+
+            const formatQuotes = (sentiment) => {
+                const samples = data
+                    .filter(review => review.sentiments?.includes(sentiment))
+                    .slice(0, 2)
+                    .map(review => {
+                        const rating = review.rating ? `${review.rating}★` : "без рейтинга";
+                        const city = review.city ? `, ${review.city}` : "";
+                        return `• [${rating}${city}] ${truncate(review.title || review.text, 140)}`;
+                    });
+                return samples.length > 0 ? samples.join('\n') : "• Нет данных";
+            };
+
+            const positiveQuotes = formatQuotes("положительно");
+            const negativeQuotes = formatQuotes("отрицательно");
+            const neutralQuotes = formatQuotes("нейтрально");
 
             const reportContent = `
 ОТЧЕТ ПО АНАЛИЗУ ОТЗЫВОВ
 Дата создания: ${new Date().toLocaleString('ru-RU')}
 
-ОБЩАЯ СТАТИСТИКА:
-- Всего отзывов: ${stats.total}
-- Положительных: ${stats.positive} (${(stats.positive / stats.total * 100).toFixed(1)}%)
-- Нейтральных: ${stats.neutral} (${(stats.neutral / stats.total * 100).toFixed(1)}%)
-- Отрицательных: ${stats.negative} (${(stats.negative / stats.total * 100).toFixed(1)}%)
-- Средний рейтинг: ${avgRating}
+ ОБЩАЯ СТАТИСТИКА:
+ - Всего отзывов: ${stats.total}
+ - Положительных: ${stats.positive} (${formatShare(stats.positive, stats.total)}%)
+ - Нейтральных: ${stats.neutral} (${formatShare(stats.neutral, stats.total)}%)
+ - Отрицательных: ${stats.negative} (${formatShare(stats.negative, stats.total)}%)
+ - Средний рейтинг: ${avgRating}
 
 ТОП ОБСУЖДАЕМЫХ ТЕМ:
-${topTopics}
+${topTopics.length ? topTopics.join('\n') : 'Нет данных'}
+
+КРИТИЧЕСКИЕ ЗОНЫ (повышенный негатив):
+${criticalTopics.length ? criticalTopics.join('\n') : 'Нет тем с превышением порога'}
+
+ТОЧКИ ВОСТОРГА (высокий позитив):
+${championTopics.length ? championTopics.join('\n') : 'Нет ярко выраженных лидеров'}
+
+ГЕОГРАФИЯ ОБРАТНОЙ СВЯЗИ:
+${topCities.length ? topCities.join('\n') : 'Нет данных по городам'}
+
+ЖИВЫЕ ЦИТАТЫ:
+Позитив:
+${positiveQuotes}
+
+Нейтральные:
+${neutralQuotes}
+
+Негатив:
+${negativeQuotes}
 
 ПРИМЕНЕННЫЕ ФИЛЬТРЫ:
 - Период: ${filters.dateFrom ? `от ${filters.dateFrom}` : 'без ограничений'} ${filters.dateTo ? `до ${filters.dateTo}` : ''}

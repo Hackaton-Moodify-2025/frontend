@@ -157,19 +157,19 @@ export default function SentimentAnalysis({ data, onQuickFilter }) {
                         </HStack>
                     </VStack>
 
-                    <ButtonGroup size="xs" variant="ghost" colorScheme="brand">
+                    <ButtonGroup size="xs" variant="ghost" colorScheme="brand" display={{ base: "none", lg: "flex" }}>
                         <Tooltip label="Показать только позитивные отзывы">
-                            <Button leftIcon={<FiFilter />} onClick={() => handleSentimentFilter(["положительно"]) }>
+                            <Button leftIcon={<FiFilter />} onClick={() => handleSentimentFilter(["положительно"])}>
                                 Позитив
                             </Button>
                         </Tooltip>
                         <Tooltip label="Показать нейтральные отзывы">
-                            <Button leftIcon={<FiFilter />} onClick={() => handleSentimentFilter(["нейтрально"]) }>
+                            <Button leftIcon={<FiFilter />} onClick={() => handleSentimentFilter(["нейтрально"])}>
                                 Нейтрально
                             </Button>
                         </Tooltip>
                         <Tooltip label="Показать проблемные отзывы">
-                            <Button leftIcon={<FiFilter />} colorScheme="red" onClick={() => handleSentimentFilter(["отрицательно"]) }>
+                            <Button leftIcon={<FiFilter />} colorScheme="red" onClick={() => handleSentimentFilter(["отрицательно"])}>
                                 Негатив
                             </Button>
                         </Tooltip>

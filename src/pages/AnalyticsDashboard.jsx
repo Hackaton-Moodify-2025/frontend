@@ -1,36 +1,23 @@
 import {
   Box,
   SimpleGrid,
-  Heading,
   VStack,
-  HStack,
   Button,
   useColorModeValue,
-  Icon,
-  Badge,
   useDisclosure,
   Collapse,
-  Divider,
   Alert,
   AlertIcon,
   Text,
-  Spinner,
   Center
 } from "@chakra-ui/react";
 import { useState, useMemo } from "react";
-import { FiFilter, FiRefreshCw, FiDownload } from "react-icons/fi";
 
 // API Hook
 import { useAnalytics } from "../hooks/useAPI";
 
 // Text analysis utility
 import { filterStopWords } from "../utils/textAnalysis";
-
-// Импорт существующих компонентов
-import KpiCards from "../components/KpiCards.jsx";
-import SentimentPie from "../components/SentimentPie.jsx";
-import TopicsBarChart from "../components/TopicsBarChart.jsx";
-import ReviewsTimeline from "../components/ReviewsTimeline.jsx";
 
 // Импорт новых компонентов
 import FilterPanel from "../components/FilterPanel.jsx";
@@ -46,6 +33,10 @@ import ExportTools from "../components/ExportTools.jsx";
 import WordCloudAnalysis from "../components/WordCloudAnalysis.jsx";
 import ActivityHeatMap from "../components/ActivityHeatMap.jsx";
 import LiveAlerts from "../components/LiveAlerts.jsx";
+import ExperienceCommandCenter from "../components/ExperienceCommandCenter.jsx";
+import ExperiencePulse from "../components/ExperiencePulse.jsx";
+import BreakoutInsights from "../components/BreakoutInsights.jsx";
+import CustomerSpotlights from "../components/CustomerSpotlights.jsx";
 
 export default function AnalyticsDashboard() {
   const { isOpen: isFilterOpen, onToggle: onFilterToggle, onOpen: onFilterOpen } = useDisclosure();
@@ -266,6 +257,56 @@ export default function AnalyticsDashboard() {
       .slice(-30); // Последние 30 дней
   }, [filteredData]);
 
+  const latestReviewDate = useMemo(() => {
+    let latest = null;
+    filteredData.forEach(item => {
+      if (!item.date) {
+        return;
+      }
+
+      const parsed = new Date(item.date);
+      if (Number.isNaN(parsed.getTime())) {
+        return;
+      }
+
+      if (!latest || parsed > latest) {
+        latest = parsed;
+      }
+    });
+
+    return latest;
+  }, [filteredData]);
+
+  const hasRecentData = useMemo(() => {
+    if (!latestReviewDate) {
+      return false;
+    }
+
+    const now = new Date();
+    const diffInDays = (now.getTime() - latestReviewDate.getTime()) / (1000 * 60 * 60 * 24);
+    return diffInDays <= 30;
+  }, [latestReviewDate]);
+
+  const latestReviewLabel = useMemo(() => {
+    if (!latestReviewDate) {
+      return null;
+    }
+
+    return latestReviewDate.toLocaleDateString("ru-RU", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric"
+    });
+  }, [latestReviewDate]);
+
+  const daysSinceLastReview = useMemo(() => {
+    if (!latestReviewDate) {
+      return null;
+    }
+
+    return Math.max(0, Math.round((Date.now() - latestReviewDate.getTime()) / (1000 * 60 * 60 * 24)));
+  }, [latestReviewDate]);
+
   const clearAllFilters = () => {
     setFilters({
       dateFrom: getDefaultDateFrom(),
@@ -339,23 +380,30 @@ export default function AnalyticsDashboard() {
     }
   };
 
+  const renderHero = () => (
+    <ExperienceCommandCenter
+      data={filteredData}
+      filters={filters}
+      onFilterToggle={onFilterToggle}
+      isFilterOpen={isFilterOpen}
+      activeFiltersCount={activeFiltersCount}
+      onClearFilters={clearAllFilters}
+      onRefresh={refresh}
+      loading={loading}
+      onQuickFilter={handleQuickFilter}
+      hasRecentData={hasRecentData}
+      latestReviewDate={latestReviewDate}
+      renderExport={() => <ExportTools data={filteredData} filters={filters} />}
+    />
+  );
+
   // Loading state
   if (loading) {
     return (
-      <Box py={6} bg={bgColor} minH="100vh">
-        <VStack spacing={6} align="stretch">
-          <HStack justify="space-between" px={6}>
-            <Heading color="brand.500">
-              🚀 Продвинутая аналитика отзывов
-            </Heading>
-            <HStack spacing={3}>
-              <Spinner size="sm" />
-              <Text fontSize="sm" color="gray.600">
-                Загрузка данных...
-              </Text>
-            </HStack>
-          </HStack>
-          <Box px={6}>
+      <Box py={{ base: 4, md: 6 }} bg={bgColor} minH="100vh">
+        <VStack spacing={8} align="stretch">
+          {renderHero()}
+          <Box px={{ base: 4, md: 6 }}>
             <AnalyticsSkeleton />
           </Box>
         </VStack>
@@ -366,22 +414,18 @@ export default function AnalyticsDashboard() {
   // Error state
   if (error) {
     return (
-      <Box py={6} bg={bgColor} minH="100vh">
-        <VStack spacing={6} align="stretch">
-          <HStack justify="space-between" px={6}>
-            <Heading color="brand.500">
-              🚀 Продвинутая аналитика отзывов
-            </Heading>
-          </HStack>
-          <Box px={6}>
-            <Alert status="error" rounded="lg">
+      <Box py={{ base: 4, md: 6 }} bg={bgColor} minH="100vh">
+        <VStack spacing={8} align="stretch">
+          {renderHero()}
+          <Box px={{ base: 4, md: 6 }}>
+            <Alert status="error" rounded="lg" alignItems="flex-start">
               <AlertIcon />
               <Box>
                 <Text fontWeight="bold">Ошибка загрузки аналитических данных</Text>
                 <Text fontSize="sm">{error}</Text>
               </Box>
-              <Button ml="auto" onClick={refresh}>
-                Повторить
+              <Button ml="auto" size="sm" onClick={refresh} variant="outline" colorScheme="brand">
+                Повторить загрузку
               </Button>
             </Alert>
           </Box>
@@ -393,21 +437,17 @@ export default function AnalyticsDashboard() {
   // No data state
   if (!analyticsData || !combinedData.length) {
     return (
-      <Box py={6} bg={bgColor} minH="100vh">
-        <VStack spacing={6} align="stretch">
-          <HStack justify="space-between" px={6}>
-            <Heading color="brand.500">
-              🚀 Продвинутая аналитика отзывов
-            </Heading>
-          </HStack>
+      <Box py={{ base: 4, md: 6 }} bg={bgColor} minH="100vh">
+        <VStack spacing={8} align="stretch">
+          {renderHero()}
           <Center py={12}>
             <VStack spacing={4}>
               <Text fontSize="lg" color="gray.500">
                 Нет данных для аналитики
               </Text>
-              <Button onClick={refresh} colorScheme="brand">
-                Обновить данные
-              </Button>
+              <Text fontSize="sm" color="gray.500">
+                Попробуйте изменить фильтры или обновить страницу
+              </Text>
             </VStack>
           </Center>
         </VStack>
@@ -416,92 +456,66 @@ export default function AnalyticsDashboard() {
   }
 
   return (
-    <Box py={6} bg={bgColor} minH="100vh">
-      <VStack spacing={6} align="stretch">
-        {/* Заголовок с контролами */}
-        <HStack justify="space-between" px={6}>
-          <Heading color="brand.500">
-            🚀 Продвинутая аналитика отзывов
-          </Heading>
-          <HStack spacing={3}>
-            <ExportTools data={filteredData} filters={filters} />
-            <Button
-              leftIcon={<Icon as={FiRefreshCw} />}
-              onClick={refresh}
-              variant="outline"
-              colorScheme="brand"
-              size="sm"
-              isLoading={loading}
-            >
-              Обновить
-            </Button>
-            <Button
-              leftIcon={<Icon as={FiFilter} />}
-              onClick={onFilterToggle}
-              variant={isFilterOpen ? "solid" : "outline"}
-              colorScheme="brand"
-              size="sm"
-            >
-              Фильтры
-              {activeFiltersCount > 0 && (
-                <Badge ml={2} colorScheme="red" variant="solid" borderRadius="full">
-                  {activeFiltersCount}
-                </Badge>
-              )}
-            </Button>
-            <Button
-              leftIcon={<Icon as={FiRefreshCw} />}
-              onClick={clearAllFilters}
-              variant="outline"
-              size="sm"
-              isDisabled={activeFiltersCount === 0}
-            >
-              Сброс
-            </Button>
-          </HStack>
-        </HStack>
+    <Box py={{ base: 4, md: 6 }} bg={bgColor} minH="100vh">
+      <VStack spacing={8} align="stretch">
+        {renderHero()}
 
-        {/* Панель фильтров */}
-        <Box px={6}>
+        {!hasRecentData && filteredData.length > 0 && (
+          <Box px={{ base: 4, md: 6 }}>
+            <Alert status="info" variant="left-accent" borderRadius="lg">
+              <AlertIcon />
+              <Box>
+                <Text fontWeight="semibold">Работа с историческими данными</Text>
+                <Text fontSize="sm">
+                  Последний найденный отзыв: {latestReviewLabel || "ранее"}
+                  {typeof daysSinceLastReview === "number" ? ` (${daysSinceLastReview} дн. назад)` : ""}. Модули, ориентированные на live-сигналы, временно отключены.
+                </Text>
+              </Box>
+            </Alert>
+          </Box>
+        )}
+
+        <Box px={{ base: 4, md: 6 }}>
           <Collapse in={isFilterOpen} animateOpacity>
             <FilterPanel filters={filters} onFiltersChange={setFilters} data={combinedData} />
           </Collapse>
         </Box>
 
-        <Box px={6}>
-          <VStack spacing={8} align="stretch">
-            {/* Продвинутые KPI */}
+        <Box px={{ base: 4, md: 6 }}>
+          <VStack spacing={10} align="stretch">
+            <ExperiencePulse data={filteredData} hasRecentData={hasRecentData} />
             <AdvancedKPI data={filteredData} />
-
-            {/* Умные инсайты - во всю ширину */}
+            <BreakoutInsights
+              data={filteredData}
+              onQuickFilter={handleQuickFilter}
+              hasRecentData={hasRecentData}
+            />
+            <CustomerSpotlights
+              data={filteredData}
+              onQuickFilter={handleQuickFilter}
+              hasRecentData={hasRecentData}
+              latestReviewDate={latestReviewDate}
+            />
             <SmartInsights data={filteredData} />
-
-            {/* Основная статистика - растянутые блоки */}
             <VStack spacing={6} align="stretch">
               <SentimentAnalysis data={filteredData} onQuickFilter={handleQuickFilter} />
               <TopicsInsights data={filteredData} onQuickFilter={handleQuickFilter} />
             </VStack>
-
-            {/* Временные тренды - во всю ширину */}
             <AdvancedTimelines data={filteredData} />
-
-            {/* Географические инсайты - во всю ширину */}
-
             <GeographicInsights data={filteredData} onQuickFilter={handleQuickFilter} />
-
-            {/* Продвинутые компоненты в двух колонках */}
             <SimpleGrid columns={{ base: 1, xl: 2 }} spacing={6}>
               <WordCloudAnalysis data={filteredData} />
               <ActivityHeatMap data={filteredData} />
             </SimpleGrid>
-
-            {/* Таблица детальных отзывов */}
             <ReviewsTable reviews={filteredData} />
           </VStack>
         </Box>
 
-        {/* Живые алерты - плавающий компонент */}
-        <LiveAlerts data={filteredData} />
+        {hasRecentData && (
+          <Box px={{ base: 4, md: 6 }}>
+            <LiveAlerts data={filteredData} />
+          </Box>
+        )}
       </VStack>
     </Box>
   );

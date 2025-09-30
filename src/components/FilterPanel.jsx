@@ -9,10 +9,8 @@ import {
     Button,
     Input,
     FormLabel,
-    Divider,
     useColorModeValue,
     Icon,
-    ButtonGroup,
     NumberInput,
     NumberInputField,
     NumberInputStepper,
@@ -40,8 +38,11 @@ import { FiFilter, FiSearch, FiStar, FiX } from "react-icons/fi";
 import DateRangeSelector from "./DateRangeSelector";
 
 export default function FilterPanel({ filters, onFiltersChange, data = [] }) {
-    const bgColor = useColorModeValue("white", "gray.800");
-    const borderColor = useColorModeValue("gray.200", "gray.600");
+    const panelBg = useColorModeValue("rgba(255, 255, 255, 0.92)", "rgba(17, 24, 39, 0.88)");
+    const panelBorder = useColorModeValue("rgba(0, 75, 135, 0.12)", "rgba(30, 64, 175, 0.4)");
+    const dividerColor = useColorModeValue("gray.200", "gray.700");
+    const chipBg = useColorModeValue("gray.100", "gray.700");
+    const chipTextColor = useColorModeValue("gray.700", "gray.200");
 
     const topics = [
         "Отделения", "Карты", "Депозиты и вклады", "Переводы и платежи",
@@ -50,6 +51,38 @@ export default function FilterPanel({ filters, onFiltersChange, data = [] }) {
     ];
 
     const sentiments = ["положительно", "нейтрально", "отрицательно"];
+
+    const activeFiltersCount = (
+        (filters.searchText ? 1 : 0) +
+        (filters.dateFrom || filters.dateTo ? 1 : 0) +
+        (filters.ratingRange && (filters.ratingRange[0] !== 1 || filters.ratingRange[1] !== 5) ? 1 : 0) +
+        filters.topics.length +
+        filters.sentiments.length +
+        filters.cities.length
+    );
+
+    const activeChips = useMemo(() => {
+        const chips = [];
+
+        if (filters.searchText) {
+            chips.push({ type: "search", label: `Поиск: "${filters.searchText}"`, value: null });
+        }
+
+        if (filters.dateFrom || filters.dateTo) {
+            const rangeLabel = `${filters.dateFrom || "..."} → ${filters.dateTo || "..."}`;
+            chips.push({ type: "date", label: `Период: ${rangeLabel.trim()}`, value: null });
+        }
+
+        if (filters.ratingRange && (filters.ratingRange[0] !== 1 || filters.ratingRange[1] !== 5)) {
+            chips.push({ type: "rating", label: `Рейтинг: ${filters.ratingRange[0]}–${filters.ratingRange[1]}★`, value: null });
+        }
+
+        filters.topics.forEach(topic => chips.push({ type: "topic", label: topic, value: topic }));
+        filters.sentiments.forEach(sentiment => chips.push({ type: "sentiment", label: sentiment, value: sentiment }));
+        filters.cities.forEach(city => chips.push({ type: "city", label: city, value: city }));
+
+        return chips;
+    }, [filters]);
 
     // Функция для нормализации названий городов
     const normalizeCity = (city) => {
@@ -255,43 +288,121 @@ export default function FilterPanel({ filters, onFiltersChange, data = [] }) {
         });
     };
 
+    const handleChipRemove = (chip) => {
+        switch (chip.type) {
+            case "search":
+                onFiltersChange({ ...filters, searchText: "" });
+                break;
+            case "date":
+                onFiltersChange({ ...filters, dateFrom: "", dateTo: "" });
+                break;
+            case "rating":
+                onFiltersChange({ ...filters, ratingRange: [1, 5] });
+                break;
+            case "topic":
+                onFiltersChange({
+                    ...filters,
+                    topics: filters.topics.filter((topic) => topic !== chip.value)
+                });
+                break;
+            case "sentiment":
+                onFiltersChange({
+                    ...filters,
+                    sentiments: filters.sentiments.filter((item) => item !== chip.value)
+                });
+                break;
+            case "city":
+                onFiltersChange({
+                    ...filters,
+                    cities: filters.cities.filter((city) => city !== chip.value)
+                });
+                break;
+            default:
+                break;
+        }
+    };
+
     return (
         <Box
-            bg={bgColor}
-            p={6}
-            borderRadius="xl"
-            border="1px"
-            borderColor={borderColor}
-            shadow="lg"
+            bg={panelBg}
+            p={{ base: 5, md: 6 }}
+            borderRadius="2xl"
+            borderWidth="1px"
+            borderColor={panelBorder}
+            shadow="xl"
+            backdropFilter="blur(18px)"
         >
-            <HStack justify="space-between" mb={4}>
-                <HStack>
-                    <Icon as={FiFilter} color="brand.500" />
-                    <Text fontSize="lg" fontWeight="bold" color="brand.500">
-                        Фильтры аналитики
-                    </Text>
+            <Stack
+                direction={{ base: "column", md: "row" }}
+                justify="space-between"
+                align={{ base: "flex-start", md: "center" }}
+                spacing={3}
+                mb={activeChips.length > 0 ? 3 : 4}
+            >
+                <HStack spacing={3} align="center">
+                    <Box
+                        w={10}
+                        h={10}
+                        borderRadius="xl"
+                        bg={chipBg}
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                    >
+                        <Icon as={FiFilter} color="brand.500" />
+                    </Box>
+                    <VStack spacing={0} align="flex-start">
+                        <Text fontSize="lg" fontWeight="bold" color="brand.500">
+                            Фильтры аналитики
+                        </Text>
+                        <Text fontSize="xs" color="gray.500">
+                            Управляйте витриной данных в один клик
+                        </Text>
+                    </VStack>
+                    <Badge colorScheme={activeFiltersCount > 0 ? "brand" : "gray"} borderRadius="full" px={3} py={1} fontSize="xs">
+                        {activeFiltersCount > 0 ? `${activeFiltersCount} актив.` : "без фильтров"}
+                    </Badge>
                 </HStack>
-                <Button size="sm" variant="ghost" onClick={clearAllFilters}>
-                    <Icon as={FiX} mr={1} />
-                    Очистить все
+                <Button size="sm" variant="ghost" onClick={clearAllFilters} leftIcon={<Icon as={FiX} />}>
+                    Сбросить всё
                 </Button>
-            </HStack>
+            </Stack>
 
-            <VStack spacing={6} align="stretch">
+            {activeChips.length > 0 && (
+                <Wrap spacing={2} mb={4}>
+                    {activeChips.map(({ type, label, value }, index) => (
+                        <WrapItem key={`${type}-${label}-${index}`}>
+                            <Tag
+                                size="sm"
+                                borderRadius="full"
+                                bg={chipBg}
+                                color={chipTextColor}
+                            >
+                                <TagLabel>{label}</TagLabel>
+                                <TagCloseButton onClick={() => handleChipRemove({ type, value })} />
+                            </Tag>
+                        </WrapItem>
+                    ))}
+                </Wrap>
+            )}
+
+            <VStack spacing={6} align="stretch" divider={<StackDivider borderColor={dividerColor} />}>
                 {/* Поиск по тексту */}
                 <Box>
                     <FormLabel fontSize="sm" fontWeight="semibold" mb={2}>
                         Поиск в отзывах
                     </FormLabel>
-                    <Input
-                        placeholder="Найти в тексте отзывов..."
-                        value={filters.searchText}
-                        onChange={(e) => onFiltersChange({ ...filters, searchText: e.target.value })}
-                        size="sm"
-                    />
+                    <InputGroup size="sm">
+                        <InputLeftElement pointerEvents="none" color="gray.400">
+                            <Icon as={FiSearch} />
+                        </InputLeftElement>
+                        <Input
+                            placeholder="Найти в тексте отзывов..."
+                            value={filters.searchText}
+                            onChange={(e) => onFiltersChange({ ...filters, searchText: e.target.value })}
+                        />
+                    </InputGroup>
                 </Box>
-
-                <Divider />
 
                 {/* Выбор диапазона дат */}
                 <DateRangeSelector
@@ -306,21 +417,23 @@ export default function FilterPanel({ filters, onFiltersChange, data = [] }) {
                         Рейтинг отзывов
                     </FormLabel>
                     <VStack align="stretch" spacing={3}>
-                        <ButtonGroup size="xs" variant="outline" isAttached>
+                        <Wrap spacing={2}>
                             {ratingPresets.map(({ label, range }) => (
-                                <Button
-                                    key={label}
-                                    leftIcon={<Icon as={FiStar} />}
-                                    onClick={() => applyRatingRange(range)}
-                                    colorScheme={isRatingPresetActive(range) ? "yellow" : "gray"}
-                                    variant={isRatingPresetActive(range) ? "solid" : "outline"}
-                                >
-                                    {label}
-                                </Button>
+                                <WrapItem key={label}>
+                                    <Button
+                                        size="xs"
+                                        leftIcon={<Icon as={FiStar} />}
+                                        onClick={() => applyRatingRange(range)}
+                                        colorScheme={isRatingPresetActive(range) ? "yellow" : "gray"}
+                                        variant={isRatingPresetActive(range) ? "solid" : "outline"}
+                                    >
+                                        {label}
+                                    </Button>
+                                </WrapItem>
                             ))}
-                        </ButtonGroup>
+                        </Wrap>
 
-                        <HStack spacing={3} align="center">
+                        <Stack direction={{ base: "column", sm: "row" }} spacing={3} align={{ base: "stretch", sm: "center" }}>
                             <NumberInput
                                 value={localRating[0]}
                                 min={1}
@@ -328,6 +441,7 @@ export default function FilterPanel({ filters, onFiltersChange, data = [] }) {
                                 step={1}
                                 size="sm"
                                 onChange={handleRatingInputChange(0)}
+                                w={{ base: "100%", sm: "80px" }}
                             >
                                 <NumberInputField />
                                 <NumberInputStepper>
@@ -335,7 +449,7 @@ export default function FilterPanel({ filters, onFiltersChange, data = [] }) {
                                     <NumberDecrementStepper />
                                 </NumberInputStepper>
                             </NumberInput>
-                            <Text fontSize="sm" color="gray.500">до</Text>
+                            <Text fontSize="sm" color="gray.500" textAlign="center">до</Text>
                             <NumberInput
                                 value={localRating[1]}
                                 min={1}
@@ -343,6 +457,7 @@ export default function FilterPanel({ filters, onFiltersChange, data = [] }) {
                                 step={1}
                                 size="sm"
                                 onChange={handleRatingInputChange(1)}
+                                w={{ base: "100%", sm: "80px" }}
                             >
                                 <NumberInputField />
                                 <NumberInputStepper>
@@ -358,11 +473,9 @@ export default function FilterPanel({ filters, onFiltersChange, data = [] }) {
                             >
                                 Применить
                             </Button>
-                        </HStack>
+                        </Stack>
                     </VStack>
                 </Box>
-
-                <Divider />
 
                 {/* Темы */}
                 <Box>
@@ -438,13 +551,19 @@ export default function FilterPanel({ filters, onFiltersChange, data = [] }) {
                                             : `${filters.cities.length} выбрано`}
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent width="320px">
+                                <PopoverContent
+                                    width="320px"
+                                    bg={panelBg}
+                                    borderColor={panelBorder}
+                                    backdropFilter="blur(18px)"
+                                    boxShadow="xl"
+                                >
                                     <PopoverHeader fontWeight="semibold">
                                         Выберите города
                                     </PopoverHeader>
                                     <PopoverCloseButton />
                                     <PopoverBody>
-                                        <VStack align="stretch" spacing={3} divider={<StackDivider />}> 
+                                        <VStack align="stretch" spacing={3} divider={<StackDivider />}>
                                             <InputGroup size="sm">
                                                 <InputLeftElement pointerEvents="none" color="gray.400">
                                                     <Icon as={FiSearch} />
