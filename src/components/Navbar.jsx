@@ -31,8 +31,7 @@ export default function Navbar() {
       label: "Аналитика",
       to: "/analytics",
       icon: FiBarChart2,
-      description: "Продвинутая аналитика с фильтрами",
-      isNew: true
+      description: "Продвинутая аналитика с фильтрами"
     },
     {
       label: "API",
