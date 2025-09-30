@@ -1,79 +1,85 @@
-// API configuration
-const API_BASE_URL = 'http://localhost:8080/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
 
-// API service for reviews
 class ReviewsAPI {
-    constructor() {
-        this.baseURL = API_BASE_URL;
+    constructor(baseURL) {
+        this.baseURL = baseURL;
+        this.defaultTimeout = 10000;
     }
 
-    // Get paginated reviews with optional filters
-    async getReviews({ page = 1, limit = 20, topic = '', sentiment = '', dateFrom = '', dateTo = '' } = {}) {
-        const params = new URLSearchParams({
-            page: page.toString(),
-            limit: limit.toString(),
-        });
+    async request(endpoint, { method = 'GET', params = {}, body = null, timeout = this.defaultTimeout } = {}) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeout);
 
-        if (topic) params.append('topic', topic);
-        if (sentiment) params.append('sentiment', sentiment);
-        if (dateFrom) params.append('date_from', dateFrom);
-        if (dateTo) params.append('date_to', dateTo);
+        try {
+            const query = new URLSearchParams();
+            Object.entries(params).forEach(([key, value]) => {
+                if (value != null && value !== '') query.append(key, value);
+            });
 
-        const response = await fetch(`${this.baseURL}/reviews?${params}`);
+            const url = query.toString()
+                ? `${this.baseURL}${endpoint}?${query}`
+                : `${this.baseURL}${endpoint}`;
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+            const options = {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                signal: controller.signal
+            };
 
-        return response.json();
-    }
+            if (body) options.body = JSON.stringify(body);
 
-    // Get all analytics data
-    async getAnalytics({ topic = '', sentiment = '', dateFrom = '', dateTo = '' } = {}) {
-        const params = new URLSearchParams();
+            const response = await fetch(url, options);
 
-        if (topic) params.append('topic', topic);
-        if (sentiment) params.append('sentiment', sentiment);
-        if (dateFrom) params.append('date_from', dateFrom);
-        if (dateTo) params.append('date_to', dateTo);
-
-        const url = params.toString() ? `${this.baseURL}/analytics?${params}` : `${this.baseURL}/analytics`;
-        const response = await fetch(url);
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        return response.json();
-    }
-
-    // Get single review by ID
-    async getReviewById(id) {
-        const response = await fetch(`${this.baseURL}/reviews/${id}`);
-
-        if (!response.ok) {
-            if (response.status === 404) {
-                throw new Error('Отзыв не найден');
+            if (!response.ok) {
+                const text = await response.text().catch(() => '');
+                throw new Error(`API error ${response.status}: ${text || response.statusText}`);
             }
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
 
-        return response.json();
+            return await response.json();
+        } catch (err) {
+            if (err.name === 'AbortError') {
+                throw new Error(`Request to ${endpoint} timed out after ${timeout}ms`);
+            }
+            throw err;
+        } finally {
+            clearTimeout(timer);
+        }
     }
 
-    // Health check
-    async healthCheck() {
-        const response = await fetch('http://localhost:8080/health');
+    getReviews({ page = 1, limit = 20, topic = '', sentiment = '', dateFrom = '', dateTo = '' } = {}) {
+        return this.request('/reviews', {
+            params: {
+                page,
+                limit,
+                topic,
+                sentiment,
+                date_from: dateFrom,
+                date_to: dateTo
+            }
+        });
+    }
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+    getAnalytics({ topic = '', sentiment = '', dateFrom = '', dateTo = '' } = {}) {
+        return this.request('/analytics', {
+            params: {
+                topic,
+                sentiment,
+                date_from: dateFrom,
+                date_to: dateTo
+            }
+        });
+    }
 
-        return response.json();
+    getReviewById(id) {
+        return this.request(`/reviews/${id}`);
+    }
+
+    healthCheck() {
+        const base = this.baseURL.replace(/\/api\/v1$/, '');
+        return this.request(`${base}/health`, {});
     }
 }
 
-// Create singleton instance
-const reviewsAPI = new ReviewsAPI();
+const reviewsAPI = new ReviewsAPI(API_BASE_URL);
 
 export default reviewsAPI;

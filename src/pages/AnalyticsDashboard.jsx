@@ -421,10 +421,18 @@ export default function AnalyticsDashboard() {
             <Alert status="error" rounded="lg" alignItems="flex-start">
               <AlertIcon />
               <Box>
-                <Text fontWeight="bold">Ошибка загрузки аналитических данных</Text>
-                <Text fontSize="sm">{error}</Text>
+                <Text fontWeight="bold">
+                  Ошибка загрузки аналитических данных {error.status ? `(${error.status})` : ""}
+                </Text>
+                <Text fontSize="sm">{error.message}</Text>
               </Box>
-              <Button ml="auto" size="sm" onClick={refresh} variant="outline" colorScheme="brand">
+              <Button
+                ml="auto"
+                size="sm"
+                onClick={refresh}
+                variant="outline"
+                colorScheme="brand"
+              >
                 Повторить загрузку
               </Button>
             </Alert>

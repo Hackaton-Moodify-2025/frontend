@@ -1,7 +1,29 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { Box, Text, Badge, HStack, Link, Image, Button, VStack, Spinner, Alert, AlertIcon, Center } from "@chakra-ui/react";
+import {
+  Box,
+  Text,
+  Badge,
+  HStack,
+  Link,
+  Image,
+  Button,
+  VStack,
+  Spinner,
+  Alert,
+  AlertIcon,
+  Center
+} from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import reviewsAPI from "../services/api";
+
+const formatError = (err, fallbackMessage = "Unexpected error") => {
+  if (!err) return { message: fallbackMessage, status: null };
+
+  return {
+    message: err.message || fallbackMessage,
+    status: err.status || null
+  };
+};
 
 function getHost(url) {
   try {
@@ -24,19 +46,18 @@ export default function ReviewPage() {
         setLoading(true);
         setError(null);
 
-        // Получаем конкретный отзыв по ID
         const reviewData = await reviewsAPI.getReviewById(id);
         setReview(reviewData);
       } catch (err) {
-        setError(err.message);
+        const formatted = formatError(err, "Не удалось загрузить отзыв");
+        setError(formatted);
+        console.error("Error fetching review:", err);
       } finally {
         setLoading(false);
       }
     };
 
-    if (id) {
-      fetchReview();
-    }
+    if (id) fetchReview();
   }, [id]);
 
   if (loading) {
@@ -56,8 +77,10 @@ export default function ReviewPage() {
         <Alert status="error" rounded="lg">
           <AlertIcon />
           <Box>
-            <Text fontWeight="bold">Ошибка загрузки</Text>
-            <Text fontSize="sm">{error}</Text>
+            <Text fontWeight="bold">
+              Ошибка {error.status ? `(${error.status})` : ""}
+            </Text>
+            <Text fontSize="sm">{error.message}</Text>
           </Box>
         </Alert>
       </Box>
@@ -89,7 +112,9 @@ export default function ReviewPage() {
               boxSize="24px"
             />
           )}
-          <Text fontWeight="bold" fontSize="xl">{review.title}</Text>
+          <Text fontWeight="bold" fontSize="xl">
+            {review.title}
+          </Text>
         </HStack>
 
         <Text fontSize="sm" color="gray.600" mb={4}>
@@ -109,8 +134,8 @@ export default function ReviewPage() {
                       review.sentiments[i] === "отрицательно"
                         ? "red"
                         : review.sentiments[i] === "положительно"
-                          ? "green"
-                          : "gray"
+                        ? "green"
+                        : "gray"
                     }
                   >
                     {review.sentiments[i]}
@@ -121,7 +146,13 @@ export default function ReviewPage() {
           </VStack>
         )}
 
-        <Link href={review.link} isExternal mt={6} display="block" color="brand.500">
+        <Link
+          href={review.link}
+          isExternal
+          mt={6}
+          display="block"
+          color="brand.500"
+        >
           Открыть оригинал ({host})
         </Link>
       </Box>
