@@ -12,7 +12,7 @@ import {
   Tooltip
 } from "@chakra-ui/react";
 import { NavLink } from "react-router-dom";
-import { FiBarChart2, FiMessageSquare, FiCode, FiTrendingUp } from "react-icons/fi";
+import { FiBarChart2, FiMessageSquare, FiCode, FiTrendingUp, FiCpu } from "react-icons/fi";
 
 export default function Navbar() {
   const bgGradient = useColorModeValue(
@@ -32,6 +32,13 @@ export default function Navbar() {
       to: "/analytics",
       icon: FiBarChart2,
       description: "Продвинутая аналитика с фильтрами"
+    },
+    {
+      label: "ML Предсказания",
+      to: "/ml-prediction",
+      icon: FiCpu,
+      description: "ML-модель для анализа тем и тональности",
+      isNew: true
     },
     {
       label: "API",
