@@ -34,7 +34,7 @@
 
 ```bash
 # клонирование репозитория
-git clone https://github.com/ваш-аккаунт/hack-dashboard.git
+git clone https://github.com/Hackaton-Moodify-2025/frontend (если по https)
 cd hack-dashboard
 
 # установка зависимостей
