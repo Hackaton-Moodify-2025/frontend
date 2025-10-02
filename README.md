@@ -72,5 +72,4 @@ public/
 - `/` — **Отзывы (ReviewsPage)**  
 - `/review/:id` — **Детальный отзыв (ReviewPage)**  
 - `/analytics` — **Аналитика (AnalyticsDashboard)**  
-- `/api` — тест работы API  
-- `/datalens` — встроенные внешние визуализации  
+- `/ml-prediction ` - **Страница отправки отзыва и его аналитика (MLPredictionPage.jsx)**
