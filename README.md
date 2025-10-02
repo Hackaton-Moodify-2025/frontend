@@ -33,8 +33,8 @@
 ## Установка и запуск
 
 ```bash
-# клонирование репозитория
-git clone https://github.com/ваш-аккаунт/hack-dashboard.git
+# клонирование репозитория (если по https)
+git clone https://github.com/Hackaton-Moodify-2025/frontend
 cd hack-dashboard
 
 # установка зависимостей

@@ -224,8 +224,8 @@ export default function CustomerSpotlights({ data, onQuickFilter, hasRecentData,
             </VStack>
             <SimpleGrid columns={{ base: 1, xl: 3 }} spacing={6}>
                 <ReviewCard
-                    title="Лоялист дня"
-                    badge="Максимальный восторг"
+                    title="Топовый отзыв"
+                    badge="Высокая оценка"
                     icon={FiHeart}
                     colorScheme="green"
                     review={promoters}

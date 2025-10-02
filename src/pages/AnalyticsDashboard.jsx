@@ -491,13 +491,15 @@ export default function AnalyticsDashboard() {
 
         <Box px={{ base: 4, md: 6 }}>
           <VStack spacing={10} align="stretch">
-            <ExperiencePulse data={filteredData} hasRecentData={hasRecentData} />
+            {hasRecentData && <ExperiencePulse data={filteredData} hasRecentData={hasRecentData} />}
             <AdvancedKPI data={filteredData} />
-            <BreakoutInsights
-              data={filteredData}
-              onQuickFilter={handleQuickFilter}
-              hasRecentData={hasRecentData}
-            />
+            {hasRecentData && (
+              <BreakoutInsights
+                data={filteredData}
+                onQuickFilter={handleQuickFilter}
+                hasRecentData={hasRecentData}
+              />
+            )}
             <CustomerSpotlights
               data={filteredData}
               onQuickFilter={handleQuickFilter}
