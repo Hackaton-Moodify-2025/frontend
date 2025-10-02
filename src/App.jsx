@@ -1,7 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Box, Container } from "@chakra-ui/react";
 import Navbar from "./components/Navbar.jsx";
-import ApiPage from "./pages/ApiPage.jsx";
 import ReviewsDashboard from "./pages/ReviewsDashboard.jsx";
 import ReviewPage from "./pages/ReviewPage.jsx";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard.jsx";
@@ -20,7 +19,6 @@ export default function App() {
           <Routes>
             <Route path="/" element={<ReviewsDashboard />} />
             <Route path="/review/:id" element={<ReviewPage />} />
-            <Route path="/api" element={<ApiPage />} />
             <Route path="/analytics" element={<AnalyticsDashboard />} />
             <Route path="/ml-prediction" element={<MLPredictionPage />} />
           </Routes>

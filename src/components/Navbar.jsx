@@ -40,12 +40,6 @@ export default function Navbar() {
       description: "ML-модель для анализа тем и тональности",
       isNew: true
     },
-    {
-      label: "API",
-      to: "/api",
-      icon: FiCode,
-      description: "Интеграция и API"
-    },
   ];
 
   return (

@@ -44,7 +44,6 @@ const MLPredictionPage = () => {
   const [rawResponse, setRawResponse] = useState(null);
   const [loading, setLoading] = useState(false);
   const [mlHealth, setMlHealth] = useState(null);
-  const [topics, setTopics] = useState(null);
   const toast = useToast();
 
   // Проверка здоровья ML-сервиса
@@ -64,22 +63,6 @@ const MLPredictionPage = () => {
       toast({
         title: "Error",
         description: "Cannot connect to ML service",
-        status: "error",
-        duration: 3000,
-      });
-    }
-  };
-
-  // Получение списка тем
-  const fetchTopics = async () => {
-    try {
-      const response = await fetch("http://localhost:8080/api/v1/ml/topics");
-      const data = await response.json();
-      setTopics(data);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch topics",
         status: "error",
         duration: 3000,
       });
@@ -190,29 +173,27 @@ const MLPredictionPage = () => {
   };
 
   const getSentimentColor = (sentiment) => {
-    switch (sentiment) {
-      case "положительно":
-        return "green";
-      case "отрицательно":
-        return "red";
-      case "нейтрально":
-        return "gray";
-      default:
-        return "blue";
+    const s = sentiment?.toLowerCase() || "";
+    if (s.includes("положительно") || s.includes("positive") || s.includes("pos")) {
+      return "green";
+    } else if (s.includes("отрицательно") || s.includes("negative") || s.includes("neg")) {
+      return "red";
+    } else if (s.includes("нейтрально") || s.includes("neutral")) {
+      return "gray";
     }
+    return "blue";
   };
 
   const getSentimentIcon = (sentiment) => {
-    switch (sentiment) {
-      case "положительно":
-        return "😊";
-      case "отрицательно":
-        return "😞";
-      case "нейтрально":
-        return "😐";
-      default:
-        return "🤔";
+    const s = sentiment?.toLowerCase() || "";
+    if (s.includes("положительно") || s.includes("positive") || s.includes("pos")) {
+      return "😊";
+    } else if (s.includes("отрицательно") || s.includes("negative") || s.includes("neg")) {
+      return "😞";
+    } else if (s.includes("нейтрально") || s.includes("neutral")) {
+      return "😐";
     }
+    return "🤔";
   };
 
   // Скачивание JSON файла
@@ -279,23 +260,9 @@ const MLPredictionPage = () => {
           <GridItem>
             <Card>
               <CardBody>
-                <Stat>
-                  <StatLabel>Доступно тем</StatLabel>
-                  <StatNumber fontSize="lg">{topics ? topics.total : "—"}</StatNumber>
-                </Stat>
-              </CardBody>
-            </Card>
-          </GridItem>
-
-          <GridItem>
-            <Card>
-              <CardBody>
                 <VStack spacing={2}>
                   <Button colorScheme="blue" size="sm" w="full" onClick={checkMLHealth}>
                     Проверить статус
-                  </Button>
-                  <Button colorScheme="teal" size="sm" w="full" onClick={fetchTopics}>
-                    Загрузить темы
                   </Button>
                 </VStack>
               </CardBody>
@@ -523,24 +490,6 @@ const MLPredictionPage = () => {
           </VStack>
         )}
 
-        {/* Доступные темы */}
-        {topics && (
-          <Card>
-            <CardHeader>
-              <Heading size="md">Список всех доступных тем ({topics.total})</Heading>
-            </CardHeader>
-            <CardBody>
-              <Flex flexWrap="wrap" gap={2}>
-                {topics.topics.map((topic, index) => (
-                  <Badge key={index} colorScheme="purple" fontSize="sm" p={2} borderRadius="md">
-                    {topic}
-                  </Badge>
-                ))}
-              </Flex>
-            </CardBody>
-          </Card>
-        )}
-
         {/* Документация API */}
         <Card>
           <CardHeader>
@@ -551,7 +500,6 @@ const MLPredictionPage = () => {
               <TabList>
                 <Tab>POST /predict</Tab>
                 <Tab>GET /health</Tab>
-                <Tab>GET /topics</Tab>
               </TabList>
 
               <TabPanels>
@@ -607,26 +555,6 @@ const MLPredictionPage = () => {
                           {
                             status: "healthy",
                             model_loaded: true,
-                          },
-                          null,
-                          2
-                        )}
-                      </Code>
-                    </Box>
-                  </VStack>
-                </TabPanel>
-
-                <TabPanel>
-                  <VStack align="stretch" spacing={4}>
-                    <Text fontWeight="semibold">Endpoint: GET /api/v1/ml/topics</Text>
-                    <Text>Получить список всех доступных тем</Text>
-                    <Box>
-                      <Text mb={2}>Response:</Text>
-                      <Code display="block" p={4} borderRadius="md" whiteSpace="pre">
-                        {JSON.stringify(
-                          {
-                            topics: ["Карты", "Кэшбек и бонусы", "..."],
-                            total: 13,
                           },
                           null,
                           2
