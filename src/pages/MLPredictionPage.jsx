@@ -568,18 +568,6 @@ const MLPredictionPage = () => {
           </CardBody>
         </Card>
 
-        {/* Информационное сообщение */}
-        <Alert status="info" borderRadius="md">
-          <AlertIcon />
-          <Box>
-            <AlertTitle>О сервисе</AlertTitle>
-            <AlertDescription>
-              Этот сервис использует предобученную модель RuBERT для анализа тональности и rule-based
-              подход для классификации тем. Модель работает без дообучения и может обрабатывать до 250
-              отзывов за один запрос.
-            </AlertDescription>
-          </Box>
-        </Alert>
       </VStack>
     </Container>
   );
