@@ -231,8 +231,8 @@ export default function ExperienceCommandCenter({
         },
         {
             key: "promoter",
-            label: "Лоялисты и wow-эффект",
-            description: "Источники восторга и высокие оценки 4-5★",
+            label: "Позитивные отзывы",
+            description: "Высокие оценки и положительные эмоции 4-5★",
             icon: FiStar,
             palette: quickActionPalette.promoter,
             onClick: () => onQuickFilter?.({ sentiments: ["положительно"], ratingRange: [4, 5] })
